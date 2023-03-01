@@ -10,7 +10,7 @@ class MySQL:
         self._connect()
     
     def _connect(self) -> None:
-        self._mydb = mysql.connector.connect(host="localhost", user="root", password="ath@1234", database="expertiza")
+        self._mydb = mysql.connector.connect(host="lin-res44.csc.ncsu.edu", user="tagging", password="expertizatagging", database="expertiza_production")
         self._cursor = self._mydb.cursor()          #cursor to execute queries
         
     def getAnswerTags(self) -> list[object]:

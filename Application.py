@@ -41,10 +41,10 @@ class Application:
         for assignment_id, users in self.intervals.items():
             for user in users:
                 print(assignment_id, user, self.intervals[assignment_id][user])
-        
+            print()
 
 app = Application()
-app.checkFastTagging()
+app.assignTaggerReliability()
         
     
     
