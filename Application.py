@@ -13,6 +13,7 @@ class Application:
         self.tc = TaggerClassifier()                    # object of TaggerClassifier
         self.intervals = defaultdict(dict)              # (displaying purpose) hashmap of {assignment_id: {user_id: interval_logs_result}}
         self.alphas = defaultdict(dict)
+        self.tags = defaultdict(dict)
         
     def __getIntervalLogs(self, tags):
         # Populating the assignment_to_users hashmap based on the assignment_id and user_id
@@ -65,9 +66,9 @@ class Application:
                     self.alphas[assignment][team] = np.nan
                     continue
                 data = np.array(data)
-                self.alphas[assignment][team] = self.tc.getKrippendorffAlpha(data)
+                self.alphas[assignment][team],self.tags[team] = self.tc.getKrippendorffAlpha(data)
                 #print(self.alphas)
-        print(self.alphas)
+        print(self.tags)
                     
                     
     def assignTaggerReliability(self):
@@ -81,7 +82,6 @@ class Application:
     
         assignment_to_teams = self._connector.getUserTeams()
         self.__calculateKrippendorffAlpha(assignment_to_teams)
-        print(self.teams[33444].assignments[1026].answers[1422933].users[8975].tags[1].value)
 
 app = Application()
 app.assignTaggerReliability()

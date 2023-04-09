@@ -38,7 +38,9 @@ class TaggerClassifier:
         # Replace 4 with the number of rating categories in your data
         num_raters = data.shape[1]
         alphas = []
+        users = {}
         for i in range(num_raters):
+            tags = []
             rater_data = data[:, i]
             #print("Observed Data = ",set(rater_data))
             other_data = np.delete(data, i, axis=1)
@@ -47,6 +49,15 @@ class TaggerClassifier:
             expected_data = []
             for edata in other_data:
                 expected_data.append(st.mode(edata).mode[0])
+            
+            for i in range(len(expected_data)):
+                if rater_data[i]==np.nan or expected_data[i]==np.nan:
+                    tags.append(0)
+                elif rater_data[i]==expected_data[i]:
+                    tags.append(1)
+                else:
+                    tags.append(-1)
+            users[i] = tags
             #print("Expected data = ", set(expected_data))
             expected_data = np.array(expected_data)
             #expected_data = st.mode(other_data.T).mode[0]
@@ -55,7 +66,7 @@ class TaggerClassifier:
                 continue
             alpha = krippendorff.alpha(np.array([rater_data, expected_data]), level_of_measurement='nominal')
             alphas.append(alpha)
-        return alphas
+        return alphas,users
         
     
     
