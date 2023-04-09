@@ -35,11 +35,11 @@ class MySQL:
             tags.append(AnswerTag(id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at))
         return tags
     
-    def getUserTeams(self):
+    def getUserTeams(self) -> dict:
         """
-        Fetches the fields of Answer Tags and Assignment id by performing an inner join on answer_tags and tag_prompt_deployments
+        Fetches the tags of all users pertaining to a team for all assignments
         Returns:
-            list[object]: list of Answer Tags
+            dict: dictionary of the form -> {assignment_id: {teams_id: {user_id: {answer_id: {tag_prompt_id: tag}}}}}
         """
         assignment_to_teams = {}
         
@@ -49,19 +49,23 @@ class MySQL:
                              from view1 v1 inner join view2 v2 on v1.user_id=v2.user_id and v1.assignment_id=v2.assignment_id;''')
         result = self._cursor.fetchall()
         
-        #creating answer tag objects and returning a list of the objects
+        #creating the dictionary
         for answer_tag_id, team_id, answer_id, tag_prompt_deployment_id, user_id, value, tag_prompt_id, assignment_id, created_at, updated_at in result:
+            #creating answer tag
             tag = AnswerTag(answer_tag_id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at)
             if assignment_id in assignment_to_teams:
                 if team_id in assignment_to_teams[assignment_id].teams:
                     if user_id in assignment_to_teams[assignment_id].teams[team_id].users:
                         if answer_id in assignment_to_teams[assignment_id].teams[team_id].users[user_id].answers:
+                            #Answer is already present, add the tag_prompt_id with corresponding tag
                             assignment_to_teams[assignment_id].teams[team_id].users[user_id].answers[answer_id].tags[tag_prompt_id] = tag
                         else:
+                            #Answer not present, create a new answer object
                             new_answer = Answer()
                             new_answer.tags = {tag_prompt_id: tag}
                             assignment_to_teams[assignment_id].teams[team_id].users[user_id].answers[answer_id] = new_answer
                     else:
+                        #user not present, create a new user
                         new_answer = Answer()
                         new_answer.tags = {tag_prompt_id: tag}
                         
@@ -69,6 +73,7 @@ class MySQL:
                         new_user.answers = {answer_id: new_answer}
                         assignment_to_teams[assignment_id].teams[team_id].users[user_id] = new_user
                 else:
+                    #team not present, create a new team
                     new_answer = Answer()
                     new_answer.tags = {tag_prompt_id: tag}
                     
@@ -80,6 +85,7 @@ class MySQL:
                     
                     assignment_to_teams[assignment_id].teams[team_id] = new_team
             else:
+                #assignmnet not present, create a new assignment
                 new_answer = Answer()
                 new_answer.tags = {tag_prompt_id: tag}
                 

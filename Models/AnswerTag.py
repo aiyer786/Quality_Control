@@ -1,9 +1,6 @@
 from datetime import datetime
 
 class AnswerTag:
-    """
-    AnswerTag model having an additional property 'assignment id'
-    """
     def __init__(self, id: int, assignment_id: int, answer_id: int, tag_prompt_deployment_id: int, user_id: int, 
                 value: str, created_at: datetime, updated_at: datetime) -> None:
         self.id = id

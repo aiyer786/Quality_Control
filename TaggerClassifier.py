@@ -33,40 +33,34 @@ class TaggerClassifier:
         result = result/(len(tags)-1)
         return result
     
-    def getKrippendorffAlpha(self, data):
+    def getKrippendorffAlpha(self, data) -> list:
+        """
+        Krippendorff alpha algorithm implementation using krippendorff library
+
+        Args:
+            data (array): 2d array where columns represent raters and rows represents tag_promot_ids
+
+        Returns:
+            list: list of alpha values of all users
+        """
         #data = data.T
-        # Replace 4 with the number of rating categories in your data
         num_raters = data.shape[1]
         alphas = []
-        users = {}
         for i in range(num_raters):
-            tags = []
             rater_data = data[:, i]
-            #print("Observed Data = ",set(rater_data))
             other_data = np.delete(data, i, axis=1)
-            #print(other_data)
-            #expected_data = np.mean(other_data, axis=1)
             expected_data = []
-            for edata in other_data:
-                expected_data.append(st.mode(edata).mode[0])
+            for tags in other_data:
+                # Calculating mode of all the other raters data
+                expected_data.append(st.mode(tags).mode[0])
             
-            for i in range(len(expected_data)):
-                if rater_data[i]==np.nan or expected_data[i]==np.nan:
-                    tags.append(0)
-                elif rater_data[i]==expected_data[i]:
-                    tags.append(1)
-                else:
-                    tags.append(-1)
-            users[i] = tags
-            #print("Expected data = ", set(expected_data))
             expected_data = np.array(expected_data)
-            #expected_data = st.mode(other_data.T).mode[0]
             if(len(set(expected_data))==1) or (len(set(expected_data))==2 and 'nan' in set(expected_data)):
                 alphas.append(np.nan)
                 continue
             alpha = krippendorff.alpha(np.array([rater_data, expected_data]), level_of_measurement='nominal')
             alphas.append(alpha)
-        return alphas,users
+        return alphas
         
     
     
