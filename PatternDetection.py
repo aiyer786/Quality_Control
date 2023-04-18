@@ -82,3 +82,5 @@ Lmin = 2  # Minimum period length
 Lmax = 6  # Maximum period length
 min_rep = 2  # Minimum number of repetitions for a periodic pattern
 PTV(bin_data, Lmin, Lmax, min_rep)
+
+1234100100100100
