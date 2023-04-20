@@ -44,7 +44,13 @@ class Application:
         # for assignment_id, users in self.interval_logs_result.items():
         #     for user in users:
         #         print('{},{},{}\n'.format(assignment_id, user, self.interval_logs_result[assignment_id][user]))
-            
+        
+        f = open("Interval_logs","w")
+        f.write("Assignment_id,User_id,IL_result\n")
+        for i in self.interval_logs_result:
+            for j in self.interval_logs_result[i]:
+                f.write(str(i)+","+str(j)+","+str(self.interval_logs_result[i][j])+"\n")
+        f.close()
     
     def __calculateKrippendorffAlpha(self):
         """
@@ -76,13 +82,19 @@ class Application:
                 
                         data.append(row)
                 if len(data[0])==1:
-                    self.krippendorff_result[assignment][team] = np.nan
+                    self.krippendorff_result[assignment][team] = [np.nan]
                     continue
                 data = np.array(data)
                 
                 #calculating krippendorff's alpha for all users in a team for an assignment
                 self.krippendorff_result[assignment][team] = self.tagger_classifier.getKrippendorffAlpha(data)
-     
+        
+        f = open("krippendorff.csv", "w")
+        f.write("Assignment_id,team_id,Alphas\n")
+        for i in self.krippendorff_result:
+            for j in self.krippendorff_result[i]:
+                f.write(str(i)+","+str(j)+","+' '.join(map(str,self.krippendorff_result[i][j]))+"\n")
+        f.close()
      
     def __calculateAgreementDisagreement(self):
         for assignment in self.assignement_to_teams:
@@ -102,26 +114,35 @@ class Application:
                         row = []
                         for user in self.assignement_to_teams[assignment].teams[team].users:
                             if answer not in self.assignement_to_teams[assignment].teams[team].users[user].answers:
-                                row.append(np.nan)
+                                row.append(None)
                             elif tag not in self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags:
-                                row.append(np.nan)
+                                row.append(None)
                             else:
-                                row.append(self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags[tag].value)
+                                row.append(self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags[tag])
                 
                         data.append(row)
-                if len(data[0])==1:
-                    self.krippendorff_result[assignment][team] = np.nan
+                if len(data[0])==0:
+                    self.agree_disagree_tags[assignment][team] = np.nan
                     continue
                 data = np.array(data)
                 
                 #calculating agreement/disagreement of all tags
-                self.agree_disagree_tags = self.tag_classifier.calculateAgreementDisagreement(data)
-                    
+                self.agree_disagree_tags[assignment][team] = self.tag_classifier.calculateAgreementDisagreement(data)
+        
+        f = open("tags.csv","w")
+        f.write("Assignment_id,team_id,answer_id,tag_prompt_id,value,fraction\n")
+        for i in self.agree_disagree_tags:
+            for j in self.agree_disagree_tags[i]:
+                for k in self.agree_disagree_tags[i][j]:
+                    for l in self.agree_disagree_tags[i][j][k]:
+                        f.write(str(i)+","+str(j)+","+str(k)+","+str(l)+","+str(self.agree_disagree_tags[i][j][k][l][0])+","+str(self.agree_disagree_tags[i][j][k][l][1])+"\n")
+        f.close()        
+        
     def assignTaggerReliability(self):
         """
         Function used to compute Interval Logs, Krippendorff Alpha and Pattern detection
         """
-        # Interval logs
+        # # Interval logs
         tags = self._connector.getAnswerTags()
         self.__getIntervalLogs(tags)
     
@@ -139,6 +160,6 @@ class Application:
 
 app = Application()
 app.assignTaggerReliability()
-#app.test_users()       
+app.assignTagReliability()
     
     

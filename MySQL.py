@@ -52,7 +52,7 @@ class MySQL:
         #creating the dictionary
         for answer_tag_id, team_id, answer_id, tag_prompt_deployment_id, user_id, value, tag_prompt_id, assignment_id, created_at, updated_at in result:
             #creating answer tag
-            tag = AnswerTag(answer_tag_id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at)
+            tag = AnswerTag(answer_tag_id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at, tag_prompt_id)
             if assignment_id in assignment_to_teams:
                 if team_id in assignment_to_teams[assignment_id].teams:
                     if user_id in assignment_to_teams[assignment_id].teams[team_id].users:
