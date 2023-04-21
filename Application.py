@@ -150,9 +150,12 @@ class Application:
         tags = self._connector.getAnswerTags()
         self.__getIntervalLogs(tags)
     
-        # Krippendorff alpha
+        # # Krippendorff alpha
         self.assignement_to_teams = self._connector.getUserTeams()
         self.__calculateKrippendorffAlpha()
+
+        # Pattern Detection
+        self.__getPatternResults(tags)
         
     def assignTagReliability(self):
         """
@@ -179,12 +182,13 @@ class Application:
         
         for assignment_id, users in self.assignment_to_user.items():
             for user,tags in users.items():
-                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user])
-        
+                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2)
+                print(self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2))
+    
 
 
 app = Application()
 app.assignTaggerReliability()
-app.assignTagReliability()
+# app.assignTagReliability()
     
     

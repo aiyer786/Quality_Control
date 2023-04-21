@@ -4,7 +4,7 @@ class PatternDetection:
             self.LP = -float("inf")
             self.SP = -float("inf")
         
-    def CheckPattern(self,lptr, rptr, period, bin_data):
+    def CheckPattern(self,lptr, rptr, period, bin_data,min_rep):
         """
         Function used to check whether there exist a pattern of appropriate length within the given interval
 
@@ -33,6 +33,7 @@ class PatternDetection:
                     if len(set(pattern_list)) == 1:
                         print("Pattern found:", pattern_list[0], "\nRepetitions:", len(pattern_list), "\nStarting Position:", lptr)
                         valid = True
+                        break
         return valid
 
 
@@ -55,6 +56,7 @@ class PatternDetection:
             PlaceHolder[i].LP = i % period
             PlaceHolder[i].SP = i % period
         valid = False
+        pos = (len(bin_data) - 1 ) % period
         # Iterate through the binary data starting from the end of the period
         for i in range(period, len(bin_data)):
             pos = i % period
@@ -64,20 +66,21 @@ class PatternDetection:
                 continue
             else:
                 # If there is a pattern in the range between SP and LP, consider it as a valid pattern
-                if self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data):
+                if self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep):
                     valid = True
-                    continue
+                    break
+                    # continue
                 
                 # Otherwise, update the SP and LP for the corresponding placeholder node
                 PlaceHolder[pos].SP = i
                 PlaceHolder[pos].LP = i
         # Check if a pattern is found between the start and last positions for the last position in the period
-        if self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data):
+        if self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep):
             valid = True
         return valid
 
 
-    def PTV(self,bin_data, Lmin, Lmax, min_rep):
+    def PTV(self,tags, Lmin, Lmax, min_rep):
         """
         Searches for a repeating pattern in the given binary data within the period range [Lmin, Lmax].
         Prints a message if a pattern is found, or "Pattern not found" otherwise.
@@ -88,7 +91,10 @@ class PatternDetection:
         Lmax -- the maximum length of the pattern to search for
         min_rep -- the minimum number of repetitions of the pattern required to declare a match
         """
-
+        tags.sort(key = lambda l: l.created_at)
+        bin_data = []
+        for i in tags:
+            bin_data.append(i.value)
         # Initialize a boolean flag to keep track of whether a pattern has been found
         pattern_found = False
 
@@ -98,9 +104,14 @@ class PatternDetection:
             if (self.PeriodicityCheck(bin_data, period, min_rep)):
                 # If a pattern is found, set the flag to True and exit the loop
                 pattern_found = True
-                
+                break
+
         if not pattern_found:
-            print("Pattern not found")
+            return("Pattern not found")
+            # print("Pattern not found")
+        else:
+            return ("Pattern found")
+            # print("Pattern found")
 
 
 # bin_data = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] 
@@ -113,13 +124,13 @@ class PatternDetection:
 # bin_data = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
 # bin_data = [0, 1, 0, 0, 1, 0, 0, 1, 0, 1]
 # bin_data = [1, 1, 0, 1, 1, 0, 1, 1, 0, 1]
-bin_data = [1, 1, 0, 1, 1, 1, 0, 1, 0, 1]
+# bin_data = [1, 1, 0, 1, 1, 1, 0, 1, 0, 1]
 
 # bin_data = [0,0,0,1,1,1,0,0,1,1,0,0]  # No Pattern
 # bin_data = [1, 0, 1, 1, 0, 0, 1, 0, 0, 0]  # No Pattern
 
-Lmin = 2  # Minimum period length
-Lmax = 6  # Maximum period length
-min_rep = 2  # Minimum number of repetitions for a periodic pattern
-x = PatternDetection()
-x.PTV(bin_data, Lmin, Lmax, min_rep)
+# Lmin = 2  # Minimum period length
+# Lmax = 6  # Maximum period length
+# min_rep = 2  # Minimum number of repetitions for a periodic pattern
+# x = PatternDetection()
+# x.PTV(bin_data, Lmin, Lmax, min_rep)
