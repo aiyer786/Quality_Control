@@ -2,6 +2,7 @@ from MySQL import MySQL
 from collections import defaultdict
 from TaggerClassifier import TaggerClassifier
 from TagClassifier import TagClassifier
+from PatternDetection_refactored import PatternDetection
 import numpy as np
 
 class Application:
@@ -17,6 +18,9 @@ class Application:
         self.krippendorff_result = defaultdict(dict)    # result of krippendorff alpha for a user
         self.agree_disagree_tags = defaultdict(dict)    # result of agreement/disagreement for each tag
         self.assignement_to_teams = {}                  # dictionary that stores the result of getUserTeams function
+        self.pattern_detection_result = defaultdict(dict) # result of interval logs
+        self.assignment_to_user = defaultdict(dict)   
+        self.pattern_detection = PatternDetection()
         
     def __getIntervalLogs(self, tags) -> None:
         """
@@ -155,8 +159,29 @@ class Application:
         Function used to compute Agreement/Disagreement of tags
         """
         self.__calculateAgreementDisagreement()
+
+    def __getPatternResults(self, tags) -> None:
+        """
+        Calculates pattern detection results
+
+        Args:
+            tags (list): List of tags
+        """
+        # Populating the assignment_to_users hashmap based on the assignment_id and user_id
+        for tag in tags:
+            if tag.assignment_id in self.assignment_to_user:
+                if tag.user_id in self.assignment_to_user[tag.assignment_id]:
+                    self.assignment_to_user[tag.assignment_id][tag.user_id].append(tag)
+                else:
+                    self.assignment_to_user[tag.assignment_id][tag.user_id] = [tag]
+            else:
+                self.assignment_to_user[tag.assignment_id] = {tag.user_id: [tag]}
         
+        for assignment_id, users in self.assignment_to_user.items():
+            for user,tags in users.items():
+                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user])
         
+
 
 app = Application()
 app.assignTaggerReliability()
