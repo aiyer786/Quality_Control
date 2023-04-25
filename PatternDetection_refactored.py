@@ -17,7 +17,7 @@ class PatternDetection:
         Return:
         valid -- a boolean indicating if a pattern was found
         """
-        valid = False
+        result = 3*[False]
         pattern_list = []
 
         # Loop through the range of positions for the given period and check for patterns
@@ -29,12 +29,15 @@ class PatternDetection:
                 pattern_list.append(tuple(pattern ))
 
                 # If the pattern has occurred minimum number of times, and all the occurrences are same, print the pattern
-                if (len(pattern_list) >= min_rep):
-                    if len(set(pattern_list)) == 1:
-                        print("Pattern found:", pattern_list[0], "\nRepetitions:", len(pattern_list), "\nStarting Position:", lptr)
-                        valid = True
-                        break
-        return valid
+        if (len(pattern_list) >= min_rep):
+            if len(set(pattern_list)) == 1:
+                result[0] = pattern_list[0]
+                result[1] = len(pattern_list)
+                result[2] = True
+                        # print("Pattern found:", pattern_list[0], "\nRepetitions:", len(pattern_list), "\nStarting Position:", lptr)
+                        # valid = True
+                        # break
+        return result
 
 
     def PeriodicityCheck(self,bin_data, period, min_rep):
@@ -49,6 +52,7 @@ class PatternDetection:
         Return:
         valid -- a boolean indicating if a pattern was found
         """
+        result = 3*[False]
         # Create a list of PlaceholderNodes for each position in the period
         PlaceHolder = [self.PlaceHolderNode() for _ in range(period)]
         # Initialize the LP (last position) and SP (start position) of each PlaceholderNode
@@ -66,18 +70,19 @@ class PatternDetection:
                 continue
             else:
                 # If there is a pattern in the range between SP and LP, consider it as a valid pattern
-                if self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep):
-                    valid = True
-                    break
+                result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep)
+                if result[2]:
+                    return result
                     # continue
                 
                 # Otherwise, update the SP and LP for the corresponding placeholder node
                 PlaceHolder[pos].SP = i
                 PlaceHolder[pos].LP = i
         # Check if a pattern is found between the start and last positions for the last position in the period
-        if self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep):
-            valid = True
-        return valid
+        result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep)
+        if result[2]:
+            return result
+        return result
 
 
     def PTV(self,tags, Lmin, Lmax, min_rep):
@@ -96,22 +101,26 @@ class PatternDetection:
         for i in tags:
             bin_data.append(i.value)
         # Initialize a boolean flag to keep track of whether a pattern has been found
+        result = []
         pattern_found = False
 
         # Iterate over all possible period lengths from Lmin to Lmax
         for period in range(Lmin, Lmax + 1):
             # Check for periodicity using the PeriodicityCheck function
-            if (self.PeriodicityCheck(bin_data, period, min_rep)):
+            result = self.PeriodicityCheck(bin_data, period, min_rep)
+            if (result[2]):
                 # If a pattern is found, set the flag to True and exit the loop
                 pattern_found = True
+                result[2] = "Pattern_Found"
                 break
 
         if not pattern_found:
-            return("Pattern not found")
-            # print("Pattern not found")
+            result[2] = "Pattern_not_found"
+            return result
+            
         else:
-            return ("Pattern found")
-            # print("Pattern found")
+            return result
+            
 
 
 # bin_data = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] 
