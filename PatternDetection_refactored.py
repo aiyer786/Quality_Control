@@ -1,5 +1,7 @@
 class PatternDetection:
+    # Main Class for Pattern Recognition
     class PlaceHolderNode:
+        # Sub class used for custom data structure
         def __init__(self):
             self.LP = -float("inf")
             self.SP = -float("inf")
@@ -15,7 +17,7 @@ class PatternDetection:
         bin_data -- the data to search within
 
         Return:
-        valid -- a boolean indicating if a pattern was found
+        Result -- a list containing a boolean for pattern found, pattern,and repitition
         """
         result = 3*[False]
         pattern_list = []
@@ -34,9 +36,6 @@ class PatternDetection:
                 result[0] = pattern_list[0]
                 result[1] = len(pattern_list)
                 result[2] = True
-                        # print("Pattern found:", pattern_list[0], "\nRepetitions:", len(pattern_list), "\nStarting Position:", lptr)
-                        # valid = True
-                        # break
         return result
 
 
@@ -50,7 +49,7 @@ class PatternDetection:
         min_rep -- the minimum number of repetitions of the pattern required to declare a match
 
         Return:
-        valid -- a boolean indicating if a pattern was found
+        Result -- a list containing a boolean for pattern found, pattern,and repitition
         """
         result = 3*[False]
         # Create a list of PlaceholderNodes for each position in the period
@@ -61,7 +60,7 @@ class PatternDetection:
             PlaceHolder[i].SP = i % period
         valid = False
         pos = (len(bin_data) - 1 ) % period
-        # Iterate through the binary data starting from the end of the period
+        # Iterate through the data starting from the end of the period
         for i in range(period, len(bin_data)):
             pos = i % period
             # If the current element matches with the LP of the corresponding placeholder node, update the LP
@@ -88,7 +87,7 @@ class PatternDetection:
     def PTV(self,tags, Lmin, Lmax, min_rep):
         """
         Searches for a repeating pattern in the given binary data within the period range [Lmin, Lmax].
-        Prints a message if a pattern is found, or "Pattern not found" otherwise.
+        Updates the result list whether pattern is found or not and then return the result list
 
         Arguments:
         bin_data -- the data to search within
@@ -100,7 +99,7 @@ class PatternDetection:
         bin_data = []
         for i in tags:
             bin_data.append(i.value)
-        # Initialize a boolean flag to keep track of whether a pattern has been found
+        # Initialize a boolean flag and result list to keep track of whether a pattern has been found
         result = []
         pattern_found = False
 
@@ -121,25 +120,3 @@ class PatternDetection:
         else:
             return result
             
-
-
-# bin_data = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0] 
-# bin_data = [0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0]
-# bin_data = [0,0,0,1,1,0,0,1,1,1,0,0,1,1,0,0,1,1,0,0,0]
-# bin_data = [1,0,0,0,1,1,1,0,0,0,1,1,0,1,0,0,0]
-# bin_data = [1,0,1,1,1,0,0,1,1,0,0,1,1,0,0,1] 
-# bin_data = [1,0,1,1,1,0,0,1,1,0,0,1,1,0,0,1] 
-# bin_data = [0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0]
-# bin_data = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
-# bin_data = [0, 1, 0, 0, 1, 0, 0, 1, 0, 1]
-# bin_data = [1, 1, 0, 1, 1, 0, 1, 1, 0, 1]
-# bin_data = [1, 1, 0, 1, 1, 1, 0, 1, 0, 1]
-
-# bin_data = [0,0,0,1,1,1,0,0,1,1,0,0]  # No Pattern
-# bin_data = [1, 0, 1, 1, 0, 0, 1, 0, 0, 0]  # No Pattern
-
-# Lmin = 2  # Minimum period length
-# Lmax = 6  # Maximum period length
-# min_rep = 2  # Minimum number of repetitions for a periodic pattern
-# x = PatternDetection()
-# x.PTV(bin_data, Lmin, Lmax, min_rep)

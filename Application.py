@@ -180,21 +180,22 @@ class Application:
             else:
                 self.assignment_to_user[tag.assignment_id] = {tag.user_id: [tag]}
         
+        # Calculating pattern detection results for each assignment and user
         for assignment_id, users in self.assignment_to_user.items():
             for user,tags in users.items():
-                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2)
-                print(self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,4))
-        
 
-        
+                # Calculate pattern detection result using the PTV method with parameters 2, 6, and 2
+                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2)        
+
+        # Writing the pattern detection results to a file
         f = open("Pattern_recognition","w")
-        f.write("Assignment_id,User_id,PD_resul,Pattern,Repititiont\n")
+        f.write("Assignment_id/User_id/PD_resul/Pattern/Repititiont\n")
         for i in self.pattern_detection_result:
             for j in self.pattern_detection_result[i]:
                 if self.pattern_detection_result[i][j][0]:
-                    f.write(str(i)+","+str(j)+","+str(self.pattern_detection_result[i][j][2])+","+str(self.pattern_detection_result[i][j][0])+","+str(self.pattern_detection_result[i][j][1])+"\n")
+                    f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"/"+str(self.pattern_detection_result[i][j][0])+"/"+str(self.pattern_detection_result[i][j][1])+"\n")
                 else:
-                    f.write(str(i)+","+str(j)+","+str(self.pattern_detection_result[i][j][2])+"\n")
+                    f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"\n")
         f.close()
     
 
