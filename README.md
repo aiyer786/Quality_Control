@@ -10,9 +10,8 @@ But can we validate the quality of student tagging?  To measure the quality of i
 Link to all the Tables in the Database: [Documentation on Database Tables](https://expertiza.csc.ncsu.edu/index.php/Documentation_on_Database_Tables)
 <br><br>
 Tables Used:
-1. [Answer tags](https://expertiza.csc.ncsu.edu/index.php?title=Answer_tags)
-![Alt text](https://imgur.com/dAPeTKZ)
-2. [Answers](https://expertiza.csc.ncsu.edu/index.php?title=Answers)
-3. [Tag prompt deployments](https://expertiza.csc.ncsu.edu/index.php?title=Tag_prompt_deployments)
-4. [Teams Users](https://expertiza.csc.ncsu.edu/index.php?title=Teams_users)
-5. [Submission records](https://expertiza.csc.ncsu.edu/index.php?title=Submission_records)
+1. [Answer tags](https://expertiza.csc.ncsu.edu/index.php?title=Answer_tags)![Alt text](https://i.imgur.com/dAPeTKZ.png)
+2. [Answers](https://expertiza.csc.ncsu.edu/index.php?title=Answers) ![Alt text](https://i.imgur.com/aM3iRG8.png)
+3. [Tag prompt deployments](https://expertiza.csc.ncsu.edu/index.php?title=Tag_prompt_deployments) ![Alt text](https://i.imgur.com/xrVrgsU.png)
+4. [Teams Users](https://expertiza.csc.ncsu.edu/index.php?title=Teams_users) ![Alt text](https://i.imgur.com/vjBEOMp.png)
+5. [Submission records](https://expertiza.csc.ncsu.edu/index.php?title=Submission_records) ![Alt text](https://i.imgur.com/sWLuIi3.png)
