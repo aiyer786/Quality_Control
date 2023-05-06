@@ -9,18 +9,19 @@ But can we validate the quality of student tagging?  To measure the quality of i
 ## Database Tables used:
 Link to all the Tables in the Database: [Documentation on Database Tables](https://expertiza.csc.ncsu.edu/index.php/Documentation_on_Database_Tables)
 <br>
-![Alt text](https://i.imgur.com/BRIY6cj.png)
+<img src="https://i.imgur.com/BRIY6cj.png" alt= “” width="500" height="500">
 <br>
 Tables Used:
-1. [Answer tags](https://expertiza.csc.ncsu.edu/index.php?title=Answer_tags)![Alt text](https://i.imgur.com/dAPeTKZ.png)
-2. [Answers](https://expertiza.csc.ncsu.edu/index.php?title=Answers) ![Alt text](https://i.imgur.com/aM3iRG8.png)
-3. [Tag prompt deployments](https://expertiza.csc.ncsu.edu/index.php?title=Tag_prompt_deployments) ![Alt text](https://i.imgur.com/xrVrgsU.png)
-4. [Teams Users](https://expertiza.csc.ncsu.edu/index.php?title=Teams_users) ![Alt text](https://i.imgur.com/vjBEOMp.png)
-5. [Submission records](https://expertiza.csc.ncsu.edu/index.php?title=Submission_records) ![Alt text](https://i.imgur.com/sWLuIi3.png)
+1. [Answer tags](https://expertiza.csc.ncsu.edu/index.php?title=Answer_tags)<img src="https://i.imgur.com/dAPeTKZ.png" alt= “” width="600" height="500">
+2. [Answers](https://expertiza.csc.ncsu.edu/index.php?title=Answers) <img src="https://i.imgur.com/aM3iRG8.png" alt= “” width="600" height="500">
+3. [Tag prompt deployments](https://expertiza.csc.ncsu.edu/index.php?title=Tag_prompt_deployments) <img src="https://i.imgur.com/xrVrgsU.png" alt= “” width="600" height="500">
+4. [Teams Users](https://expertiza.csc.ncsu.edu/index.php?title=Teams_users) <img src="https://i.imgur.com/vjBEOMp.png" alt= “” width="600" height="500">
+5. [Submission records](https://expertiza.csc.ncsu.edu/index.php?title=Submission_records) <img src="https://i.imgur.com/sWLuIi3.png" alt= “” width="600" height="500">
 
 
 ## Results: 
-1. Fast Tagging values of each tagger ![Alt text](https://i.imgur.com/j8VgE5k.png)
+1. Fast Tagging values of each tagger 
+<img src="https://i.imgur.com/j8VgE5k.png" alt= “” width="600" height="500">
 <br>
 The resulting table includes assignment_id, user_id present in that assignment, and the fast tagging logarithmic timestamp value of each user. This table provides researchers with a quick and easy way to evaluate the speed and efficiency of their annotators and identify potential quality issues. Researchers can compare the average tagging time of each student with a pre-defined threshold to determine whether they are tagging too quickly or too slowly.
 
@@ -28,7 +29,8 @@ The resulting table from the fast tagging strategy is a powerful tool for resear
 
 Researchers can use the table to quickly identify any potential quality issues and to compare the efficiency of different annotators. By comparing the average tagging time of each student with a pre-defined threshold, researchers can easily determine whether an annotator is tagging too quickly or too slowly. This can help to identify potential quality issues, such as inadequate training or insufficient time spent reviewing the data, and take corrective action to improve the quality of the assigned labels.
 
-2. Krippendorff's alpha coefficients for each tagger ![Alt text](https://i.imgur.com/dyX1Yo3.png)
+2. Krippendorff's alpha coefficients for each tagger 
+<img src="https://i.imgur.com/dyX1Yo3.png" alt= “” width="600" height="500">
 <br> 
 We output a table showing the assignment ID, team ID, user ID, and Krippendorff's alpha values of each user. This table can be used by researchers to classify users as reliable or not based on the Krippendorff's alpha values. Our results suggest that researchers can use this table to identify reliable team members and exclude unreliable ones, thereby improving the quality of the labeling process.
 
@@ -37,7 +39,8 @@ Our results included negative, positive, and zero values for Krippendorff's alph
 Our results showed some NaN values for cases where we cannot calculate Krippendorff's alpha values for particular users. These cases included situations where there was just one person in the team or when all the students gave the same tag values to all the tags, and hence there was no other value to consider. These NaN values were excluded from our analysis.
 
 
-3. Pattern Detection for each tagger ![Alt text](https://i.imgur.com/DVqij0u.png)
+3. Pattern Detection for each tagger 
+<img src="https://i.imgur.com/DVqij0u.png" alt= “” width="600" height="500">
 <br>
 Our results provide a detailed table that includes assignment_id, user_id, pattern found or not, the specific pattern that was identified, and the number of repetitions for each pattern. This information enables researchers to identify unreliable workers who are following a pattern and classify them accordingly.
 
@@ -48,7 +51,8 @@ We found that the table provided by our algorithm was easy to interpret and unde
 The table also provides researchers with insights into the specific patterns that workers are following, enabling them to identify potential sources of bias in their data. By addressing these biases, researchers can improve the accuracy and reliability of their data, leading to better outcomes and more informed decisions.
 
 
-4. IRR values for each tag ![Alt text](https://i.imgur.com/zddt5sm.png)
+4. IRR values for each tag
+<img src="https://i.imgur.com/zddt5sm.png" alt= “” width="600" height="500">
 <br>
 To further understand the patterns in the data, we included assignment_id, team_id, answer_id, tag_prompt_id, tag_value, and fraction in the table we provided. The assignment_id refers to the unique identifier for the task assigned to the crowd workers. The team_id refers to the unique identifier for the group of crowd workers who worked on the same task. The answer_id refers to the unique identifier for each response given to the crowd worker's work. The tag_prompt_id refers to the unique identifier for each tag prompt given to the crowd workers. The tag_value refers to the crowd worker's assigned value for each tag prompt, which can be either 1 or -1. Finally, the fraction refers to the proportion of the team that agrees with the assigned tag value.
 
