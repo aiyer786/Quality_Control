@@ -7,10 +7,10 @@ class TaggerClassifier:
     """
     Class containing methods to tag a classifier as reliable/unreliable
     """
-    def intervalLogs(self, tags) -> int:
+    def buildIntervalLogs(self, tags) -> int:
         """
         Gets the time difference in seconds between subsequent tags, applies log base 2 to the result, 
-        and finally averages the result to return it
+        and finally return the average
         Args:
             tags (list): list of answer tags
 
@@ -33,7 +33,7 @@ class TaggerClassifier:
         result = result/(len(tags)-1)
         return result
     
-    def getKrippendorffAlpha(self, data) -> list:
+    def ComputeKrippendorffAlpha(self, data) -> list:  #getKrippendorffAlpha
         """
         Krippendorff alpha algorithm implementation using krippendorff library
 

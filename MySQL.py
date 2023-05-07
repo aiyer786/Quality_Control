@@ -14,9 +14,10 @@ class MySQL:
         self._connect()
     
     def _connect(self) -> None:
+        # Connect to the Expertiza database hosted on lin-res44.csc.ncsu.edu
         self._mydb = mysql.connector.connect(host="lin-res44.csc.ncsu.edu", user="tagging", password="expertizatagging", database="expertiza_production")
         #self._mydb = mysql.connector.connect(host="localhost", user="root", password="ath@1234", database="expertiza")
-        self._cursor = self._mydb.cursor()          #cursor to execute queries
+        self._cursor = self._mydb.cursor()      # Create a cursor to execute queries
         
     def getAnswerTags(self) -> list[object]:
         """
@@ -26,7 +27,7 @@ class MySQL:
         """
         tags = []
         
-        #join query
+        # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
         self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id order by a.created_at desc")
         result = self._cursor.fetchall()
         
@@ -41,31 +42,37 @@ class MySQL:
         Returns:
             dict: dictionary of the form -> {assignment_id: {teams_id: {user_id: {answer_id: {tag_prompt_id: tag}}}}}
         """
+        # Initialize an empty dictionary to hold the assignments and their associated teams
         assignment_to_teams = {}
         
-        #join query
+        #Join query to fetch tags of all users in a team for all assignments
         self._cursor.execute('''select v1.id, v2.team_id, v1.answer_id, v1.tag_prompt_deployment_id, 
                              v1.user_id, v1.value, v1.tag_prompt_id, v1.assignment_id, v1.created_at, v1.updated_at 
                              from view1 v1 inner join view2 v2 on v1.user_id=v2.user_id and v1.assignment_id=v2.assignment_id;''')
         result = self._cursor.fetchall()
         
         #creating the dictionary
+        # Loop through the results and populate the assignment_to_teams dictionary
         for answer_tag_id, team_id, answer_id, tag_prompt_deployment_id, user_id, value, tag_prompt_id, assignment_id, created_at, updated_at in result:
-            #creating answer tag
+            #Create an AnswerTag object for the current row of data
             tag = AnswerTag(answer_tag_id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at, tag_prompt_id)
+            # Check if the current assignment already exists in the assignment_to_teams dictionary
             if assignment_id in assignment_to_teams:
+                # Check if the current team already exists for the current assignment
                 if team_id in assignment_to_teams[assignment_id].teams:
+                    # Check if the current user already exists for the current team
                     if user_id in assignment_to_teams[assignment_id].teams[team_id].users:
+                        # Check if the current answer already exists for the current user
                         if answer_id in assignment_to_teams[assignment_id].teams[team_id].users[user_id].answers:
                             #Answer is already present, add the tag_prompt_id with corresponding tag
                             assignment_to_teams[assignment_id].teams[team_id].users[user_id].answers[answer_id].tags[tag_prompt_id] = tag
                         else:
-                            #Answer not present, create a new answer object
+                            #Answer not present, create a new Answer object and add it to the current user
                             new_answer = Answer()
                             new_answer.tags = {tag_prompt_id: tag}
                             assignment_to_teams[assignment_id].teams[team_id].users[user_id].answers[answer_id] = new_answer
                     else:
-                        #user not present, create a new user
+                        # User not present, create a new User object and a new Answer object, then add them to the current team
                         new_answer = Answer()
                         new_answer.tags = {tag_prompt_id: tag}
                         
@@ -73,7 +80,7 @@ class MySQL:
                         new_user.answers = {answer_id: new_answer}
                         assignment_to_teams[assignment_id].teams[team_id].users[user_id] = new_user
                 else:
-                    #team not present, create a new team
+                    # Team not present, create a new Team object, a new User object, and a new Answer object, then add them to the current assignment
                     new_answer = Answer()
                     new_answer.tags = {tag_prompt_id: tag}
                     
