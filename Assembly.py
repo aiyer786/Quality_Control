@@ -17,10 +17,10 @@ class Application:
         self.interval_logs_result = defaultdict(dict)   # result of interval logs
         self.krippendorff_result = defaultdict(dict)    # result of krippendorff alpha for a user
         self.agree_disagree_tags = defaultdict(dict)    # result of agreement/disagreement for each tag
-        self.assignement_to_teams = {}                  # dictionary that stores the result of getUserTeams function
         self.pattern_detection_result = defaultdict(dict) # result of interval logs
         self.assignment_to_user = defaultdict(dict)   
         self.pattern_detection = PatternDetection()
+        self.assignment_to_teams = {}                  # dictionary that stores the result of getUserTeams function
         
     def __getIntervalLogs(self, tags) -> None:
         """
@@ -42,7 +42,7 @@ class Application:
         # Calculating interval logs per assignment per user
         for assignment_id, users in self.assignment_to_users.items():
             for user,tags in users.items():
-                self.interval_logs_result[assignment_id][user] = self.tagger_classifier.intervalLogs(self.assignment_to_users[assignment_id][user])
+                self.interval_logs_result[assignment_id][user] = self.tagger_classifier.buildIntervalLogs(self.assignment_to_users[assignment_id][user])
         
         # Displaying the interval logs for a user per assignment
         # for assignment_id, users in self.interval_logs_result.items():
@@ -56,33 +56,33 @@ class Application:
                 f.write(str(i)+","+str(j)+","+str(self.interval_logs_result[i][j])+"\n")
         f.close()
     
-    def __calculateKrippendorffAlpha(self):
+    def __getKrippendorffAlpha(self):
         """
         Calculates krippendorf alpha value for each user
         """
         
-        for assignment in self.assignement_to_teams:
-            for team in self.assignement_to_teams[assignment].teams:
+        for assignment in self.assignment_to_teams:
+            for team in self.assignment_to_teams[assignment].teams:
                 data = []
                 answers = defaultdict(set)
                 
                 #collecting all the tag_prompt_ids for al answers of a team
-                for user in self.assignement_to_teams[assignment].teams[team].users:
-                    for answer in self.assignement_to_teams[assignment].teams[team].users[user].answers:
-                        for tag in self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags:
+                for user in self.assignment_to_teams[assignment].teams[team].users:
+                    for answer in self.assignment_to_teams[assignment].teams[team].users[user].answers:
+                        for tag in self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags:
                             answers[answer].add(tag)
                 
                 # collecting all the raters data for a single tag_prompt_id
                 for answer in answers:
                     for tag in answers[answer]:
                         row = []
-                        for user in self.assignement_to_teams[assignment].teams[team].users:
-                            if answer not in self.assignement_to_teams[assignment].teams[team].users[user].answers:
+                        for user in self.assignment_to_teams[assignment].teams[team].users:
+                            if answer not in self.assignment_to_teams[assignment].teams[team].users[user].answers:
                                 row.append(np.nan)
-                            elif tag not in self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags:
+                            elif tag not in self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags:
                                 row.append(np.nan)
                             else:
-                                row.append(self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags[tag].value)
+                                row.append(self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags[tag].value)
                 
                         data.append(row)
                 if len(data[0])==1:
@@ -91,7 +91,7 @@ class Application:
                 data = np.array(data)
                 
                 #calculating krippendorff's alpha for all users in a team for an assignment
-                self.krippendorff_result[assignment][team] = self.tagger_classifier.getKrippendorffAlpha(data)
+                self.krippendorff_result[assignment][team] = self.tagger_classifier.ComputeKrippendorffAlpha(data)
         
         f = open("krippendorff.csv", "w")
         f.write("Assignment_id,team_id,Alphas\n")
@@ -101,28 +101,28 @@ class Application:
         f.close()
      
     def __calculateAgreementDisagreement(self):
-        for assignment in self.assignement_to_teams:
-            for team in self.assignement_to_teams[assignment].teams:
+        for assignment in self.assignment_to_teams:
+            for team in self.assignment_to_teams[assignment].teams:
                 data = []
                 answers = defaultdict(set)
                 
                 #collecting all the tag_prompt_ids for al answers of a team
-                for user in self.assignement_to_teams[assignment].teams[team].users:
-                    for answer in self.assignement_to_teams[assignment].teams[team].users[user].answers:
-                        for tag in self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags:
+                for user in self.assignment_to_teams[assignment].teams[team].users:
+                    for answer in self.assignment_to_teams[assignment].teams[team].users[user].answers:
+                        for tag in self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags:
                             answers[answer].add(tag)
                 
                 # collecting all the raters data for a single tag_prompt_id
                 for answer in answers:
                     for tag in answers[answer]:
                         row = []
-                        for user in self.assignement_to_teams[assignment].teams[team].users:
-                            if answer not in self.assignement_to_teams[assignment].teams[team].users[user].answers:
+                        for user in self.assignment_to_teams[assignment].teams[team].users:
+                            if answer not in self.assignment_to_teams[assignment].teams[team].users[user].answers:
                                 row.append(None)
-                            elif tag not in self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags:
+                            elif tag not in self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags:
                                 row.append(None)
                             else:
-                                row.append(self.assignement_to_teams[assignment].teams[team].users[user].answers[answer].tags[tag])
+                                row.append(self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags[tag])
                 
                         data.append(row)
                 if len(data[0])==0:
@@ -153,9 +153,14 @@ class Application:
         # # # Krippendorff alpha
         # self.assignement_to_teams = self._connector.getUserTeams()
         # self.__calculateKrippendorffAlpha()
+        
+        # Krippendorff alpha
+        self.assignment_to_teams = self._connector.getUserTeams()
+        self.__getKrippendorffAlpha()
 
         # Pattern Detection
         self.__getPatternResults(tags)
+
         
     def assignTagReliability(self):
         """
