@@ -2,6 +2,7 @@ from MySQL import MySQL
 from collections import defaultdict
 from TaggerClassifier import TaggerClassifier
 from TagClassifier import TagClassifier
+from PatternDetection_refactored import PatternDetection
 import numpy as np
 
 class Application:
@@ -16,6 +17,9 @@ class Application:
         self.interval_logs_result = defaultdict(dict)   # result of interval logs
         self.krippendorff_result = defaultdict(dict)    # result of krippendorff alpha for a user
         self.agree_disagree_tags = defaultdict(dict)    # result of agreement/disagreement for each tag
+        self.pattern_detection_result = defaultdict(dict) # result of interval logs
+        self.assignment_to_user = defaultdict(dict)   
+        self.pattern_detection = PatternDetection()
         self.assignment_to_teams = {}                  # dictionary that stores the result of getUserTeams function
         
     def __getIntervalLogs(self, tags) -> None:
@@ -144,22 +148,63 @@ class Application:
         """
         # # Interval logs
         tags = self._connector.getAnswerTags()
-        self.__getIntervalLogs(tags)
+        # self.__getIntervalLogs(tags)
     
+        # # # Krippendorff alpha
+        # self.assignement_to_teams = self._connector.getUserTeams()
+        # self.__calculateKrippendorffAlpha()
+        
         # Krippendorff alpha
         self.assignment_to_teams = self._connector.getUserTeams()
         self.__getKrippendorffAlpha()
+
+        # Pattern Detection
+        self.__getPatternResults(tags)
+
         
     def assignTagReliability(self):
         """
         Function used to compute Agreement/Disagreement of tags
         """
         self.__calculateAgreementDisagreement()
+
+    def __getPatternResults(self, tags) -> None:
+        """
+        Calculates pattern detection results
+
+        Args:
+            tags (list): List of tags
+        """
+        # Populating the assignment_to_users hashmap based on the assignment_id and user_id
+        for tag in tags:
+            if tag.assignment_id in self.assignment_to_user:
+                if tag.user_id in self.assignment_to_user[tag.assignment_id]:
+                    self.assignment_to_user[tag.assignment_id][tag.user_id].append(tag)
+                else:
+                    self.assignment_to_user[tag.assignment_id][tag.user_id] = [tag]
+            else:
+                self.assignment_to_user[tag.assignment_id] = {tag.user_id: [tag]}
         
-        
+        # Calculating pattern detection results for each assignment and user
+        for assignment_id, users in self.assignment_to_user.items():
+            for user,tags in users.items():
+
+                # Calculate pattern detection result using the PTV method with parameters 2, 6, and 2
+                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2)        
+
+        # Writing the pattern detection results to a file
+        f = open("Pattern_recognition","w")
+        f.write("Assignment_id/User_id/PD_resul/Pattern/Repititiont\n")
+        for i in self.pattern_detection_result:
+            for j in self.pattern_detection_result[i]:
+                if self.pattern_detection_result[i][j][0]:
+                    f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"/"+str(self.pattern_detection_result[i][j][0])+"/"+str(self.pattern_detection_result[i][j][1])+"\n")
+                else:
+                    f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"\n")
+        f.close()
+    
+
 
 app = Application()
 app.assignTaggerReliability()
-app.assignTagReliability()
-    
-    
+# app.assignTagReliability()
