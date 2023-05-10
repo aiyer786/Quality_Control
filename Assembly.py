@@ -148,7 +148,7 @@ class Application:
         """
         # # Interval logs
         tags = self._connector.getAnswerTags()
-        # self.__getIntervalLogs(tags)
+        self.__getIntervalLogs(tags)
     
         # # # Krippendorff alpha
         # self.assignement_to_teams = self._connector.getUserTeams()
@@ -193,7 +193,7 @@ class Application:
                 self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2)        
 
         # Writing the pattern detection results to a file
-        f = open("Pattern_recognition","w")
+        f = open("Pattern_recognition.txt","w")
         f.write("Assignment_id/User_id/PD_resul/Pattern/Repititiont\n")
         for i in self.pattern_detection_result:
             for j in self.pattern_detection_result[i]:
@@ -207,4 +207,4 @@ class Application:
 
 app = Application()
 app.assignTaggerReliability()
-# app.assignTagReliability()
+app.assignTagReliability()

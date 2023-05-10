@@ -131,4 +131,5 @@ dmypy.json
 # SQL extensions
 *.sql
 
-krippendorf.py
+*.csv
+*.txt
