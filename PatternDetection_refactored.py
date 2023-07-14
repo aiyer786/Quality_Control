@@ -6,7 +6,7 @@ class PatternDetection:
             self.LP = -float("inf")
             self.SP = -float("inf")
         
-    def CheckPattern(self,lptr, rptr, period, bin_data,min_rep):
+    def CheckPattern(self,lptr, rptr, period, bin_data,min_tags):
         """
         Function used to check whether there exist a pattern of appropriate length within the given interval
 
@@ -31,7 +31,7 @@ class PatternDetection:
                 pattern_list.append(tuple(pattern ))
 
                 # If the pattern has occurred minimum number of times, and all the occurrences are same, print the pattern
-        if (len(pattern_list) >= min_rep):
+        if (len(pattern_list)>1 and len(pattern_list)*len(pattern_list[0]) >= min_tags):
             if len(set(pattern_list)) == 1:
                 result[0] = pattern_list[0]
                 result[1] = len(pattern_list)
@@ -39,7 +39,7 @@ class PatternDetection:
         return result
 
 
-    def PeriodicityCheck(self,bin_data, period, min_rep):
+    def PeriodicityCheck(self,bin_data, period, min_tags):
         """
         Perform periodicity check and validation on the binary data for a given period
 
@@ -69,7 +69,7 @@ class PatternDetection:
                 continue
             else:
                 # If there is a pattern in the range between SP and LP, consider it as a valid pattern
-                result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep)
+                result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_tags)
                 if result[2]:
                     return result
                     # continue
@@ -78,13 +78,13 @@ class PatternDetection:
                 PlaceHolder[pos].SP = i
                 PlaceHolder[pos].LP = i
         # Check if a pattern is found between the start and last positions for the last position in the period
-        result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_rep)
+        result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data,min_tags)
         if result[2]:
             return result
         return result
 
 
-    def PTV(self,tags, Lmin, Lmax, min_rep):
+    def PTV(self,tags, Lmin, Lmax, min_tags):
         """
         Searches for a repeating pattern in the given binary data within the period range [Lmin, Lmax].
         Updates the result list whether pattern is found or not and then return the result list
@@ -106,7 +106,7 @@ class PatternDetection:
         # Iterate over all possible period lengths from Lmin to Lmax
         for period in range(Lmin, Lmax + 1):
             # Check for periodicity using the PeriodicityCheck function
-            result = self.PeriodicityCheck(bin_data, period, min_rep)
+            result = self.PeriodicityCheck(bin_data, period, min_tags)
             if (result[2]):
                 # If a pattern is found, set the flag to True and exit the loop
                 pattern_found = True

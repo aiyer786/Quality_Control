@@ -28,12 +28,12 @@ class MySQL:
         tags = []
         
         # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
-        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id order by a.created_at desc")
+        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1131, 1125, 1119, 1115, 1111, 1108, 1091, 1085, 1075, 1068, 1064, 1061, 1045, 1040, 1037, 1031, 1028, 1026, 1016, 1011, 1005, 992, 991);")
         result = self._cursor.fetchall()
         
         #creating answer tag objects and returning a list of the objects
-        for id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at in result:
-            tags.append(AnswerTag(id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at))
+        for id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at, tag_prompt_id in result:
+            tags.append(AnswerTag(id, assignment_id, answer_id, tag_prompt_deployment_id, user_id, value, created_at, updated_at, tag_prompt_id))
         return tags
     
     def getUserTeams(self) -> dict:
@@ -50,7 +50,7 @@ class MySQL:
                              v1.user_id, v1.value, v1.tag_prompt_id, v1.assignment_id, v1.created_at, v1.updated_at 
                              from view1 v1 inner join view2 v2 on v1.user_id=v2.user_id and v1.assignment_id=v2.assignment_id;''')
         result = self._cursor.fetchall()
-        
+        print("Query executed.........")
         #creating the dictionary
         # Loop through the results and populate the assignment_to_teams dictionary
         for answer_tag_id, team_id, answer_id, tag_prompt_deployment_id, user_id, value, tag_prompt_id, assignment_id, created_at, updated_at in result:

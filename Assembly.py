@@ -49,7 +49,7 @@ class Application:
         #     for user in users:
         #         print('{},{},{}\n'.format(assignment_id, user, self.interval_logs_result[assignment_id][user]))
         
-        f = open("Interval_logs","w")
+        f = open("Interval_logs.csv","w")
         f.write("Assignment_id,User_id,IL_result\n")
         for i in self.interval_logs_result:
             for j in self.interval_logs_result[i]:
@@ -65,9 +65,11 @@ class Application:
             for team in self.assignment_to_teams[assignment].teams:
                 data = []
                 answers = defaultdict(set)
+                users = []
                 
                 #collecting all the tag_prompt_ids for al answers of a team
                 for user in self.assignment_to_teams[assignment].teams[team].users:
+                    users.append(user)
                     for answer in self.assignment_to_teams[assignment].teams[team].users[user].answers:
                         for tag in self.assignment_to_teams[assignment].teams[team].users[user].answers[answer].tags:
                             answers[answer].add(tag)
@@ -86,18 +88,19 @@ class Application:
                 
                         data.append(row)
                 if len(data[0])==1:
-                    self.krippendorff_result[assignment][team] = [np.nan]
+                    self.krippendorff_result[assignment][team] = {users[0]: np.nan}
                     continue
                 data = np.array(data)
                 
                 #calculating krippendorff's alpha for all users in a team for an assignment
-                self.krippendorff_result[assignment][team] = self.tagger_classifier.ComputeKrippendorffAlpha(data)
+                self.krippendorff_result[assignment][team] = self.tagger_classifier.computeKrippendorffAlpha(data, users)
         
         f = open("krippendorff.csv", "w")
-        f.write("Assignment_id,team_id,Alphas\n")
+        f.write("Assignment_id,Team_id,User_id,Alphas\n")
         for i in self.krippendorff_result:
             for j in self.krippendorff_result[i]:
-                f.write(str(i)+","+str(j)+","+' '.join(map(str,self.krippendorff_result[i][j]))+"\n")
+                for k in self.krippendorff_result[i][j]:
+                    f.write(str(i)+","+str(j)+","+' '+str(k)+", "+str(self.krippendorff_result[i][j][k])+"\n")
         f.close()
      
     def __calculateAgreementDisagreement(self):
@@ -146,20 +149,16 @@ class Application:
         """
         Function used to compute Interval Logs, Krippendorff Alpha and Pattern detection
         """
-        # # Interval logs
-        tags = self._connector.getAnswerTags()
-        self.__getIntervalLogs(tags)
+        # Interval logs
+        self.tags = self._connector.getAnswerTags()
+        self.__getIntervalLogs(self.tags)
     
-        # # # Krippendorff alpha
-        # self.assignement_to_teams = self._connector.getUserTeams()
-        # self.__calculateKrippendorffAlpha()
-        
         # Krippendorff alpha
-        self.assignment_to_teams = self._connector.getUserTeams()
-        self.__getKrippendorffAlpha()
+        # self.assignment_to_teams = self._connector.getUserTeams()
+        # self.__getKrippendorffAlpha()
 
-        # Pattern Detection
-        self.__getPatternResults(tags)
+        # # Pattern Detection
+        self.__getPatternResults(self.tags)
 
         
     def assignTagReliability(self):
@@ -190,11 +189,11 @@ class Application:
             for user,tags in users.items():
 
                 # Calculate pattern detection result using the PTV method with parameters 2, 6, and 2
-                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],2,6,2)        
+                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],5,30,15)        
 
         # Writing the pattern detection results to a file
         f = open("Pattern_recognition.txt","w")
-        f.write("Assignment_id/User_id/PD_resul/Pattern/Repititiont\n")
+        f.write("Assignment_id/User_id/PD_result/Pattern/Repetition\n")
         for i in self.pattern_detection_result:
             for j in self.pattern_detection_result[i]:
                 if self.pattern_detection_result[i][j][0]:
@@ -204,7 +203,6 @@ class Application:
         f.close()
     
 
-
 app = Application()
 app.assignTaggerReliability()
-app.assignTagReliability()
+#app.assignTagReliability()

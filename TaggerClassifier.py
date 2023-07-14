@@ -26,14 +26,16 @@ class TaggerClassifier:
         curr = 0
         # Adding the log of time difference in seconds
         for ind in range(1, len(tags)):
-            curr += (tags[ind].created_at - tags[ind-1].created_at).total_seconds()
+            try:
+                curr += math.log((tags[ind].created_at - tags[ind-1].created_at).total_seconds(),2)
+            except:
+                curr+=0
         
-        result = math.log(curr,2) if curr>0 else 0              # if time difference is 0 then add 0
         # Taking average
-        result = result/(len(tags)-1)
+        result = curr/(len(tags)-1)
         return result
     
-    def ComputeKrippendorffAlpha(self, data) -> list:  #getKrippendorffAlpha
+    def computeKrippendorffAlpha(self, data, users) -> list:  #getKrippendorffAlpha
         """
         Krippendorff alpha algorithm implementation using krippendorff library
 
@@ -44,8 +46,8 @@ class TaggerClassifier:
             list: list of alpha values of all users
         """
         #data = data.T
-        num_raters = data.shape[1]
-        alphas = []
+        num_raters = len(users)
+        alphas = {}
         for i in range(num_raters):
             rater_data = data[:, i]
             other_data = np.delete(data, i, axis=1)
@@ -56,10 +58,11 @@ class TaggerClassifier:
             
             expected_data = np.array(expected_data)
             if(len(set(expected_data))==1) or (len(set(expected_data))==2 and 'nan' in set(expected_data)):
-                alphas.append(np.nan)
+                alphas[users[i]] = np.nan
                 continue
+            
             alpha = krippendorff.alpha(np.array([rater_data, expected_data]), level_of_measurement='nominal')
-            alphas.append(alpha)
+            alphas[users[i]] = alpha
         return alphas
         
     
