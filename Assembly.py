@@ -1,3 +1,4 @@
+import argparse
 from MySQL import MySQL
 from collections import defaultdict
 from TaggerClassifier import TaggerClassifier
@@ -22,7 +23,7 @@ class Application:
         self.pattern_detection = PatternDetection()
         self.assignment_to_teams = {}                  # dictionary that stores the result of getUserTeams function
         
-    def __getIntervalLogs(self, tags) -> None:
+    def __getIntervalLogs(self, tags, log_time=None) -> None:
         """
         Calculates Interval logs
 
@@ -49,14 +50,17 @@ class Application:
         #     for user in users:
         #         print('{},{},{}\n'.format(assignment_id, user, self.interval_logs_result[assignment_id][user]))
         
+        # Writing the interval logs to a csv file if the log time is greater than the given log time
         f = open("Interval_logs.csv","w")
         f.write("Assignment_id,User_id,IL_result\n")
         for i in self.interval_logs_result:
             for j in self.interval_logs_result[i]:
-                f.write(str(i)+","+str(j)+","+str(self.interval_logs_result[i][j])+"\n")
+                if log_time is None or self.interval_logs_result[i][j] >= log_time:
+                    f.write(str(i)+","+str(j)+","+str(self.interval_logs_result[i][j])+"\n")
         f.close()
     
-    def __getKrippendorffAlpha(self):
+    
+    def __getKrippendorffAlpha(self, alpha=None):
         """
         Calculates krippendorf alpha value for each user
         """
@@ -95,12 +99,14 @@ class Application:
                 #calculating krippendorff's alpha for all users in a team for an assignment
                 self.krippendorff_result[assignment][team] = self.tagger_classifier.computeKrippendorffAlpha(data, users)
         
+        #writing the krippendorff's alpha to a csv file if the alpha value is greater than the given alpha value
         f = open("krippendorff.csv", "w")
         f.write("Assignment_id,Team_id,User_id,Alphas\n")
         for i in self.krippendorff_result:
             for j in self.krippendorff_result[i]:
                 for k in self.krippendorff_result[i][j]:
-                    f.write(str(i)+","+str(j)+","+' '+str(k)+", "+str(self.krippendorff_result[i][j][k])+"\n")
+                    if alpha is None or self.krippendorff_result[i][j][k] >= alpha:
+                        f.write(str(i)+","+str(j)+","+' '+str(k)+", "+str(self.krippendorff_result[i][j][k])+"\n")
         f.close()
      
     def __calculateAgreementDisagreement(self):
@@ -145,20 +151,20 @@ class Application:
                         f.write(str(i)+","+str(j)+","+str(k)+","+str(l)+","+str(self.agree_disagree_tags[i][j][k][l][0])+","+str(self.agree_disagree_tags[i][j][k][l][1])+"\n")
         f.close()        
         
-    def assignTaggerReliability(self):
+    def assignTaggerReliability(self, log_time=None, alpha=None, lmin=5, lmax=30, minrep=15):
         """
         Function used to compute Interval Logs, Krippendorff Alpha and Pattern detection
         """
         # Interval logs
         self.tags = self._connector.getAnswerTags()
-        self.__getIntervalLogs(self.tags)
+        self.__getIntervalLogs(self.tags, log_time)
     
         # Krippendorff alpha
-        # self.assignment_to_teams = self._connector.getUserTeams()
-        # self.__getKrippendorffAlpha()
+        self.assignment_to_teams = self._connector.getUserTeams()
+        self.__getKrippendorffAlpha(alpha)
 
         # # Pattern Detection
-        self.__getPatternResults(self.tags)
+        self.__getPatternResults(self.tags, lmin, lmax, minrep)
 
         
     def assignTagReliability(self):
@@ -167,7 +173,7 @@ class Application:
         """
         self.__calculateAgreementDisagreement()
 
-    def __getPatternResults(self, tags) -> None:
+    def __getPatternResults(self, tags, lmin=5, lmax=30, minrep=15) -> None:
         """
         Calculates pattern detection results
 
@@ -189,7 +195,8 @@ class Application:
             for user,tags in users.items():
 
                 # Calculate pattern detection result using the PTV method with parameters 2, 6, and 2
-                self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],5,30,15)        
+                        self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],lmin,lmax,minrep)        
+        
 
         # Writing the pattern detection results to a file
         f = open("Pattern_recognition.txt","w")
@@ -203,6 +210,14 @@ class Application:
         f.close()
     
 
-app = Application()
-app.assignTaggerReliability()
-#app.assignTagReliability()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the Application with specific parameters.")
+    parser.add_argument('--log_time', type=float, default=None, help="Filtering value for log time.")
+    parser.add_argument('--alpha', type=float, default=None, help="Filtering value for krippendorff alpha.")
+    parser.add_argument('--lmin', type=int, default=5, help="Minimum value for pattern detection.")
+    parser.add_argument('--lmax', type=int, default=30, help="Maximum value for pattern detection.")
+    parser.add_argument('--minrep', type=int, default=15, help="Minimum repetition value for pattern detection.")
+    args = parser.parse_args()
+
+    app = Application()
+    app.assignTaggerReliability(args.log_time, args.alpha, args.lmin, args.lmax, args.minrep)
