@@ -15,8 +15,8 @@ class MySQL:
     
     def _connect(self) -> None:
         # Connect to the Expertiza database hosted on lin-res44.csc.ncsu.edu
-        self._mydb = mysql.connector.connect(host="lin-res44.csc.ncsu.edu", user="tagging", password="expertizatagging", database="expertiza_production")
-        #self._mydb = mysql.connector.connect(host="localhost", user="root", password="ath@1234", database="expertiza")
+        #self._mydb = mysql.connector.connect(host="lin-res44.csc.ncsu.edu", user="tagging", password="expertizatagging", database="expertiza_production")
+        self._mydb = mysql.connector.connect(host="localhost", user="root", password="", database="expertiza_production")
         self._cursor = self._mydb.cursor()      # Create a cursor to execute queries
         
     def getAnswerTags(self) -> list[object]:
@@ -28,7 +28,7 @@ class MySQL:
         tags = []
         
         # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
-        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1131, 1125, 1119, 1115, 1111, 1108, 1091, 1085, 1075, 1068, 1064, 1061, 1045, 1040, 1037, 1031, 1028, 1026, 1016, 1011, 1005, 992, 991);")
+        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1144);")
         result = self._cursor.fetchall()
         
         #creating answer tag objects and returning a list of the objects
