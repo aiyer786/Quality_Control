@@ -5,6 +5,9 @@ from TaggerClassifier import TaggerClassifier
 from TagClassifier import TagClassifier
 from PatternDetection_refactored import PatternDetection
 import numpy as np
+import pandas as pd
+import os
+
 
 class Application:
     """
@@ -51,7 +54,7 @@ class Application:
         #         print('{},{},{}\n'.format(assignment_id, user, self.interval_logs_result[assignment_id][user]))
         
         # Writing the interval logs to a csv file if the log time is greater than the given log time
-        f = open("Interval_logs.csv","w")
+        f = open("data/Interval_logs.csv","w")
         f.write("Assignment_id,User_id,IL_result\n")
         for i in self.interval_logs_result:
             for j in self.interval_logs_result[i]:
@@ -100,7 +103,7 @@ class Application:
                 self.krippendorff_result[assignment][team] = self.tagger_classifier.computeKrippendorffAlpha(data, users)
         
         #writing the krippendorff's alpha to a csv file if the alpha value is greater than the given alpha value
-        f = open("krippendorff.csv", "w")
+        f = open("data/krippendorff.csv", "w")
         f.write("Assignment_id,Team_id,User_id,Alphas\n")
         for i in self.krippendorff_result:
             for j in self.krippendorff_result[i]:
@@ -142,7 +145,7 @@ class Application:
                 #calculating agreement/disagreement of all tags
                 self.agree_disagree_tags[assignment][team] = self.tag_classifier.calculateAgreementDisagreement(data)
         
-        f = open("tags.csv","w")
+        f = open("data/tags.csv","w")
         f.write("Assignment_id,team_id,answer_id,tag_prompt_id,value,fraction\n")
         for i in self.agree_disagree_tags:
             for j in self.agree_disagree_tags[i]:
@@ -199,7 +202,7 @@ class Application:
         
 
         # Writing the pattern detection results to a file
-        f = open("Pattern_recognition.txt","w")
+        f = open("data/Pattern_recognition.txt","w")
         f.write("Assignment_id/User_id/PD_result/Pattern/Repetition\n")
         for i in self.pattern_detection_result:
             for j in self.pattern_detection_result[i]:
@@ -209,8 +212,34 @@ class Application:
                     f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"\n")
         f.close()
     
+    def combine_csv_results(self, output_file):
+        # Read the CSV files into DataFrames
+        interval_logs_df = pd.read_csv("data/Interval_logs.csv")
+        krippendorff_df = pd.read_csv("data/krippendorff.csv")
+        pattern_results_df = pd.read_csv("data/Pattern_recognition.txt", sep="/", header=0, names=["Assignment_id", "User_id", "PD_result", "Pattern", "Repetition"])
+
+        # Merge the DataFrames on 'Assignment_id' and 'User_id'
+        # Assuming that 'Assignment_id' and 'User_id' are the columns to join on
+        merged_df = interval_logs_df.merge(krippendorff_df, on=['Assignment_id', 'User_id'])
+        merged_df = merged_df.merge(pattern_results_df, on=['Assignment_id', 'User_id'])
+        
+        # Selecting the columns we are interested in and renaming for clarity
+        final_df = merged_df[['User_id', 'Assignment_id', 'IL_result', 'Alphas', 'PD_result']]
+        final_df.columns = ['USER ID', 'ASSIGNMENT ID', 'FAST_TAGGING_LOG_VALUES', 'ALPHA VALUES', 'PATTERN FOUND OR NOT']
+        
+        # Replace NaNs with a more descriptive value, if necessary
+        # e.g., final_df['PATTERN FOUND OR NOT'].fillna('No Pattern', inplace=True)
+        
+        # Write the combined results to a new CSV file
+        output_path = f"data/{output_file}"
+        final_df.to_csv(output_path, index=False)
+        
+        print(f"Combined CSV created successfully as {output_file}")
+
 
 if __name__ == "__main__":
+    # Ensure data directory exists
+    os.makedirs('data', exist_ok=True)
     parser = argparse.ArgumentParser(description="Run the Application with specific parameters.")
     parser.add_argument('--log_time', type=float, default=None, help="Filtering value for log time.")
     parser.add_argument('--alpha', type=float, default=None, help="Filtering value for krippendorff alpha.")
@@ -221,3 +250,4 @@ if __name__ == "__main__":
 
     app = Application()
     app.assignTaggerReliability(args.log_time, args.alpha, args.lmin, args.lmax, args.minrep)
+    app.combine_csv_results('Combined_Results.csv')

@@ -35,36 +35,43 @@ class TaggerClassifier:
         result = curr/(len(tags)-1)
         return result
     
-    def computeKrippendorffAlpha(self, data, users) -> list:  #getKrippendorffAlpha
+    def computeKrippendorffAlpha(self, data, users) -> list:
         """
         Krippendorff alpha algorithm implementation using krippendorff library
-
+        
         Args:
             data (array): 2d array where columns represent raters and rows represents tag_promot_ids
-
+        
         Returns:
             list: list of alpha values of all users
         """
-        #data = data.T
         num_raters = len(users)
         alphas = {}
         for i in range(num_raters):
-            rater_data = data[:, i]
-            other_data = np.delete(data, i, axis=1)
+            rater_data = data[:, i].astype(np.float64)  # Convert to float to ensure numeric types
+            other_data = np.delete(data, i, axis=1).astype(np.float64)
             expected_data = []
             for tags in other_data:
-                # Calculating mode of all the other raters data
-                expected_data.append(st.mode(tags).mode[0])
-            
+                numeric_tags = tags[~np.isnan(tags)]
+                if numeric_tags.size > 0:
+                    mode_result = st.mode(numeric_tags)
+                    mode_value = mode_result.mode if mode_result.mode.size > 0 else np.nan
+                    expected_data.append(mode_value)
+                else:
+                    expected_data.append(np.nan)
+                
             expected_data = np.array(expected_data)
-            if(len(set(expected_data))==1) or (len(set(expected_data))==2 and 'nan' in set(expected_data)):
+            
+            # Skip calculation if there's not enough variation
+            if np.nanstd(expected_data) == 0:
                 alphas[users[i]] = np.nan
                 continue
             
-            alpha = krippendorff.alpha(np.array([rater_data, expected_data]), level_of_measurement='nominal')
-            alphas[users[i]] = alpha
+            try:
+                alpha = krippendorff.alpha(np.array([rater_data, expected_data]), level_of_measurement='nominal')
+                alphas[users[i]] = alpha
+            except ValueError:
+                # Handle the case where there's not enough variation to compute alpha
+                alphas[users[i]] = 'not enough variation'
+                
         return alphas
-        
-    
-    
-    
