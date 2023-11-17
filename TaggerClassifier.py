@@ -10,7 +10,7 @@ class TaggerClassifier:
     def buildIntervalLogs(self, tags) -> int:
         """
         Gets the time difference in seconds between subsequent tags, applies log base 2 to the result, 
-        and finally return the average
+        and finally return the average, as well as the number of tags
         Args:
             tags (list): list of answer tags
 
@@ -18,7 +18,7 @@ class TaggerClassifier:
             int: interval logs value for a tagger
         """
         if len(tags)==1:
-            return -1                                       # Need to be discussed
+            return (-1,1)                                       # Need to be discussed
         
         tags.sort(key = lambda l: l.created_at)             # sorting the tags based on created_at
         result = 0
@@ -33,7 +33,7 @@ class TaggerClassifier:
         
         # Taking average
         result = curr/(len(tags)-1)
-        return result
+        return (result, len(tags))
     
     def computeKrippendorffAlpha(self, data, users) -> list:
         """

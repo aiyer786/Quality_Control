@@ -1,4 +1,5 @@
 import argparse
+import ast
 from MySQL import MySQL
 from collections import defaultdict
 from TaggerClassifier import TaggerClassifier
@@ -55,11 +56,13 @@ class Application:
         
         # Writing the interval logs to a csv file if the log time is greater than the given log time
         f = open("data/Interval_logs.csv","w")
-        f.write("Assignment_id,User_id,IL_result\n")
+        f.write("Assignment_id,User_id,IL_result,Time,Number_of_Tags\n")
         for i in self.interval_logs_result:
             for j in self.interval_logs_result[i]:
+                log_time_value=self.interval_logs_result[i][j][0]
+                number_of_tags=self.interval_logs_result[i][j][1]
                 if log_time is None or self.interval_logs_result[i][j] >= log_time:
-                    f.write(str(i)+","+str(j)+","+str(self.interval_logs_result[i][j])+"\n")
+                    f.write(str(i)+","+str(j)+","+str(log_time_value)+","+str(pow(2, log_time_value))+","+str(number_of_tags)+"\n")
         f.close()
     
     
@@ -219,35 +222,47 @@ class Application:
         pattern_results_df = pd.read_csv("data/Pattern_recognition.txt", sep="/", header=0, names=["Assignment_id", "User_id", "PD_result", "Pattern", "Repetition"])
 
         # Merge the DataFrames on 'Assignment_id' and 'User_id'
-        # Assuming that 'Assignment_id' and 'User_id' are the columns to join on
         merged_df = interval_logs_df.merge(krippendorff_df, on=['Assignment_id', 'User_id'])
+
         merged_df = merged_df.merge(pattern_results_df, on=['Assignment_id', 'User_id'])
-        
-        # Selecting the columns we are interested in and renaming for clarity
-        final_df = merged_df[['User_id', 'Assignment_id', 'IL_result', 'Alphas', 'PD_result']]
-        final_df.columns = ['USER ID', 'ASSIGNMENT ID', 'FAST_TAGGING_LOG_VALUES', 'ALPHA VALUES', 'PATTERN FOUND OR NOT']
-        
+
+        # Ensure the 'Time' column is present after the merge
+        print(merged_df.columns)
+
+        # Replace the 'Repetition' column values with 'Y' for 1 and 'N' for -1
+        # Assuming merged_df is your DataFrame and 'Pattern' is the column of interest
+        merged_df['Pattern'] = merged_df['Pattern'].apply(lambda x: x.replace('-1', 'N').replace('1', 'Y') if isinstance(x, str) else x)
+
+        # If you want to ensure that 'N/A' values are left as they are, you could add a condition:
+        merged_df['Pattern'] = merged_df['Pattern'].apply(lambda x: x.replace('-1', 'N').replace('1', 'Y') if isinstance(x, str) and x != 'N/A' else x)
+
+
+        # Now select the columns, ensuring each column name is a separate string in the list
+        final_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', 'PD_result', "Pattern", "Repetition", "Number_of_Tags"]]
+        final_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION', 'NUMBER OF TAGS']
+
         # Replace NaNs with a more descriptive value, if necessary
-        # e.g., final_df['PATTERN FOUND OR NOT'].fillna('No Pattern', inplace=True)
-        
+        final_df.fillna('N/A', inplace=True)
+
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
         final_df.to_csv(output_path, index=False)
-        
-        print(f"Combined CSV created successfully as {output_file}")
+
+        print(f"Combined CSV created successfully as {output_path}")
+
 
 
 if __name__ == "__main__":
     # Ensure data directory exists
     os.makedirs('data', exist_ok=True)
     parser = argparse.ArgumentParser(description="Run the Application with specific parameters.")
-    parser.add_argument('--log_time', type=float, default=None, help="Filtering value for log time.")
-    parser.add_argument('--alpha', type=float, default=None, help="Filtering value for krippendorff alpha.")
-    parser.add_argument('--lmin', type=int, default=5, help="Minimum value for pattern detection.")
-    parser.add_argument('--lmax', type=int, default=30, help="Maximum value for pattern detection.")
-    parser.add_argument('--minrep', type=int, default=15, help="Minimum repetition value for pattern detection.")
+    parser.add_argument('--log_time_min', type=float, default=None, help="Filtering value for log time.")
+    parser.add_argument('--alpha_min', type=float, default=None, help="Filtering value for krippendorff alpha.")
+    parser.add_argument('--min_pattern_len', type=int, default=5, help="Minimum value for pattern detection.")
+    parser.add_argument('--max_pattern_len', type=int, default=30, help="Maximum value for pattern detection.")
+    parser.add_argument('--min_pattern_rep', type=int, default=15, help="Minimum repetition value for pattern detection.")
     args = parser.parse_args()
 
     app = Application()
-    app.assignTaggerReliability(args.log_time, args.alpha, args.lmin, args.lmax, args.minrep)
+    app.assignTaggerReliability(args.log_time_min, args.alpha_min, args.min_pattern_len, args.max_pattern_len, args.min_pattern_rep)
     app.combine_csv_results('Combined_Results.csv')
