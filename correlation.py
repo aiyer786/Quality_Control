@@ -112,7 +112,7 @@ class Correlation:
 
         self.interval_logs_result = pd.merge(self.interval_logs_result, self.pattern_detection_result, on=['Assignment_id', 'User_id'])
         
-        self.interval_logs_result['PD_result'] = self.interval_logs_result['PD_result'].apply(lambda x: -1 if x=="Pattern_Found" else 1)
+        self.interval_logs_result['PD_result'] = self.interval_logs_result['PD_result'].apply(lambda x: -1 if x=="Found" else 1)
         
         self.interval_logs_result['Final_score'] = self.interval_logs_result.apply(lambda x: self.computeFinalScore(x), axis=1)
         columns_to_delete = ['Team_id', 'Comments', 'Pattern', 'Repetition']

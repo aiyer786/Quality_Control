@@ -110,11 +110,11 @@ class PatternDetection:
             if (result[2]):
                 # If a pattern is found, set the flag to True and exit the loop
                 pattern_found = True
-                result[2] = "Pattern_Found"
+                result[2] = "Found"
                 break
 
         if not pattern_found:
-            result[2] = "Pattern_not_found"
+            result[2] = "Not_found"
             return result
             
         else:

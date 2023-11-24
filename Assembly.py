@@ -45,24 +45,33 @@ class Application:
                 self.assignment_to_users[tag.assignment_id] = {tag.user_id: [tag]}
                 
         # Calculating interval logs per assignment per user
+        f = open("data/user_data.csv","w")
+        f.write("User_id,Assignment_id,Tag_Value,Score,Review_Comment,Tag_Prompt\n")
         for assignment_id, users in self.assignment_to_users.items():
             for user,tags in users.items():
                 self.interval_logs_result[assignment_id][user] = self.tagger_classifier.buildIntervalLogs(self.assignment_to_users[assignment_id][user])
-        
+                # f.write(str(user)+","+str(assignment_id)+","+str(tags.value)+","+str(tags.score)+","+str(tags.comments)+","+str(tags.prompt)+"\n")
+        f.close()
+
         # Displaying the interval logs for a user per assignment
         # for assignment_id, users in self.interval_logs_result.items():
         #     for user in users:
         #         print('{},{},{}\n'.format(assignment_id, user, self.interval_logs_result[assignment_id][user]))
         
         # Writing the interval logs to a csv file if the log time is greater than the given log time
-        f = open("data/Interval_logs.csv","w")
-        f.write("Assignment_id,User_id,IL_result,Time,Number_of_Tags\n")
-        for i in self.interval_logs_result:
-            for j in self.interval_logs_result[i]:
-                log_time_value=self.interval_logs_result[i][j][0]
-                number_of_tags=self.interval_logs_result[i][j][1]
-                if log_time is None or self.interval_logs_result[i][j] >= log_time:
-                    f.write(str(i)+","+str(j)+","+str(log_time_value)+","+str(pow(2, log_time_value))+","+str(number_of_tags)+"\n")
+        # Writing the interval logs to a csv file if the log time is greater than the given log time
+        with open("data/Interval_logs.csv", "w") as f:
+            f.write("Assignment_id,User_id,IL_result,Time,Number_of_Tags\n")
+            for assignment_id, users in self.interval_logs_result.items():
+                for user_id, results in users.items():
+                    log_time_value = results[0]
+                    number_of_tags = results[1]
+                    if log_time is None or log_time_value >= log_time:
+                        # Format IL_result and Time to 3 decimal places
+                        il_result_formatted = "{:.3f}".format(log_time_value)
+                        time_formatted = "{:.3f}".format(pow(2, log_time_value))
+                        f.write(f"{assignment_id},{user_id},{il_result_formatted},{time_formatted},{number_of_tags}\n")
+
         f.close()
     
     
@@ -108,11 +117,14 @@ class Application:
         #writing the krippendorff's alpha to a csv file if the alpha value is greater than the given alpha value
         f = open("data/krippendorff.csv", "w")
         f.write("Assignment_id,Team_id,User_id,Alphas\n")
-        for i in self.krippendorff_result:
-            for j in self.krippendorff_result[i]:
-                for k in self.krippendorff_result[i][j]:
-                    if alpha is None or self.krippendorff_result[i][j][k] >= alpha:
-                        f.write(str(i)+","+str(j)+","+' '+str(k)+", "+str(self.krippendorff_result[i][j][k])+"\n")
+        for assignment_id, teams in self.krippendorff_result.items():
+            for team_id, users_alphas in teams.items():
+                for user_id, alpha_value in users_alphas.items():
+                    # Check if alpha is None or the alpha value is greater or equal than the given alpha threshold
+                    if alpha is None or alpha_value >= alpha:
+                        # Format Alphas to 3 decimal places if it's a float, otherwise write 'nan'
+                        alpha_formatted = "{:.3f}".format(alpha_value) if isinstance(alpha_value, float) else "nan"
+                        f.write(f"{assignment_id},{team_id},{user_id},{alpha_formatted}\n")
         f.close()
      
     def __calculateAgreementDisagreement(self):
@@ -223,32 +235,33 @@ class Application:
 
         # Merge the DataFrames on 'Assignment_id' and 'User_id'
         merged_df = interval_logs_df.merge(krippendorff_df, on=['Assignment_id', 'User_id'])
-
         merged_df = merged_df.merge(pattern_results_df, on=['Assignment_id', 'User_id'])
 
         # Ensure the 'Time' column is present after the merge
         print(merged_df.columns)
 
-        # Replace the 'Repetition' column values with 'Y' for 1 and 'N' for -1
-        # Assuming merged_df is your DataFrame and 'Pattern' is the column of interest
-        merged_df['Pattern'] = merged_df['Pattern'].apply(lambda x: x.replace('-1', 'N').replace('1', 'Y') if isinstance(x, str) else x)
+        # Replace 'N/A' with a space in the entire DataFrame
+        merged_df.replace('N/A', ' ', inplace=True)
+        
+        # Replace '-1' with a space in the 'FAST TAGGING LOG VALUES' column
+        merged_df['IL_result'] = merged_df['IL_result'].apply(lambda x: ' ' if x == -1 else x)
 
-        # If you want to ensure that 'N/A' values are left as they are, you could add a condition:
-        merged_df['Pattern'] = merged_df['Pattern'].apply(lambda x: x.replace('-1', 'N').replace('1', 'Y') if isinstance(x, str) and x != 'N/A' else x)
+        # Replace pattern strings like "('-1', '1', '1', '-1', '1', '1')" with "NYYNYY"
+        merged_df['Pattern'] = merged_df['Pattern'].apply(
+            lambda x: ''.join(['Y' if num == '1' else 'N' for num in ast.literal_eval(x)]) 
+                    if isinstance(x, str) and x.startswith('(') else x
+        )
 
-
-        # Now select the columns, ensuring each column name is a separate string in the list
+        # Select the columns, ensuring each column name is a separate string in the list
         final_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', 'PD_result', "Pattern", "Repetition", "Number_of_Tags"]]
-        final_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION', 'NUMBER OF TAGS']
-
-        # Replace NaNs with a more descriptive value, if necessary
-        final_df.fillna('N/A', inplace=True)
+        final_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION', 'NUMBER OF TAGS SET']
 
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
-        final_df.to_csv(output_path, index=False)
+        final_df.to_csv(output_path, index=False, na_rep=' ')
 
         print(f"Combined CSV created successfully as {output_path}")
+
 
 
 
