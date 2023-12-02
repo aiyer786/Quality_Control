@@ -1,5 +1,6 @@
 import argparse
 import ast
+import re
 from MySQL import MySQL
 from collections import defaultdict
 from TaggerClassifier import TaggerClassifier
@@ -24,6 +25,7 @@ class Application:
         self.agree_disagree_tags = defaultdict(dict)    # result of agreement/disagreement for each tag
         self.pattern_detection_result = defaultdict(dict) # result of interval logs
         self.assignment_to_user = defaultdict(dict)   
+        self.user_history_dict = defaultdict(dict)
         self.pattern_detection = PatternDetection()
         self.assignment_to_teams = {}                  # dictionary that stores the result of getUserTeams function
         
@@ -45,21 +47,10 @@ class Application:
                 self.assignment_to_users[tag.assignment_id] = {tag.user_id: [tag]}
                 
         # Calculating interval logs per assignment per user
-        f = open("data/user_data.csv","w")
-        f.write("User_id,Assignment_id,Tag_Value,Score,Review_Comment,Tag_Prompt\n")
         for assignment_id, users in self.assignment_to_users.items():
             for user,tags in users.items():
                 self.interval_logs_result[assignment_id][user] = self.tagger_classifier.buildIntervalLogs(self.assignment_to_users[assignment_id][user])
-                # f.write(str(user)+","+str(assignment_id)+","+str(tags.value)+","+str(tags.score)+","+str(tags.comments)+","+str(tags.prompt)+"\n")
-        f.close()
-
-        # Displaying the interval logs for a user per assignment
-        # for assignment_id, users in self.interval_logs_result.items():
-        #     for user in users:
-        #         print('{},{},{}\n'.format(assignment_id, user, self.interval_logs_result[assignment_id][user]))
-        
-        # Writing the interval logs to a csv file if the log time is greater than the given log time
-        # Writing the interval logs to a csv file if the log time is greater than the given log time
+                
         with open("data/Interval_logs.csv", "w") as f:
             f.write("Assignment_id,User_id,IL_result,Time,Number_of_Tags\n")
             for assignment_id, users in self.interval_logs_result.items():
@@ -71,10 +62,42 @@ class Application:
                         il_result_formatted = "{:.3f}".format(log_time_value)
                         time_formatted = "{:.3f}".format(pow(2, log_time_value))
                         f.write(f"{assignment_id},{user_id},{il_result_formatted},{time_formatted},{number_of_tags}\n")
-
+        print("Interval logs written to data/Interval_logs.csv")
         f.close()
     
-    
+    def __getUserHistory(self, user_history) -> None:
+        """
+        Calculates Interval logs
+
+        Args:
+            tags (list): List of tags
+        """         
+        for tag in user_history:
+            if tag.assignment_id in self.user_history_dict:
+                if tag.user_id in self.user_history_dict[tag.assignment_id]:
+                    self.user_history_dict[tag.assignment_id][tag.user_id].append(tag)
+                else:
+                    self.user_history_dict[tag.assignment_id][tag.user_id] = [tag]
+            else:
+                self.user_history_dict[tag.assignment_id] = {tag.user_id: [tag]}
+                
+        # Calculating interval logs per assignment per user
+        f = open("data/user_data.csv","w")
+        f.write("User_id,Assignment_id,Question,Review_Comment,Tag_Prompt,Tag_Value\n")
+        for assignment_id, users in self.user_history_dict.items():
+            for user,tags in users.items():                    
+                for tag in tags:
+                    # Clean 'question' by removing HTML tags and commas
+                    cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '')
+                    # Clean 'comments' by removing HTML tags and commas
+                    cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '')
+                    
+                    # Concatenate the cleaned strings with other information and add it to the output string
+                    output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{cleaned_comments},{tag.prompt},{tag.value}\n"
+                    f.write(output_string)
+        print("User data written to data/user_data.csv")
+        f.close()
+  
     def __getKrippendorffAlpha(self, alpha=None):
         """
         Calculates krippendorf alpha value for each user
@@ -125,6 +148,7 @@ class Application:
                         # Format Alphas to 3 decimal places if it's a float, otherwise write 'nan'
                         alpha_formatted = "{:.3f}".format(alpha_value) if isinstance(alpha_value, float) else "nan"
                         f.write(f"{assignment_id},{team_id},{user_id},{alpha_formatted}\n")
+        print("Krippendorff's alpha written to data/krippendorff.csv")
         f.close()
      
     def __calculateAgreementDisagreement(self):
@@ -184,6 +208,10 @@ class Application:
         # # Pattern Detection
         self.__getPatternResults(self.tags, lmin, lmax, minrep)
 
+        # User data
+        self.user_history = self._connector.getUserHistory()
+        self.__getUserHistory(self.user_history)
+
         
     def assignTagReliability(self):
         """
@@ -225,6 +253,7 @@ class Application:
                     f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"/"+str(self.pattern_detection_result[i][j][0])+"/"+str(self.pattern_detection_result[i][j][1])+"\n")
                 else:
                     f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"\n")
+        print("Pattern recognition results written to data/Pattern_recognition.txt")
         f.close()
     
     def combine_csv_results(self, output_file):
