@@ -80,20 +80,20 @@ class Application:
                     self.user_history_dict[tag.assignment_id][tag.user_id] = [tag]
             else:
                 self.user_history_dict[tag.assignment_id] = {tag.user_id: [tag]}
-                
+
         # Calculating interval logs per assignment per user
         f = open("data/user_data.csv","w")
-        f.write("User_id,Assignment_id,Question,Review_Comment,Tag_Prompt,Tag_Value\n")
+        f.write("User_id,Assignment_id,Question,Score,Review_Comment,Tag_Prompt,Tag_Value\n")
         for assignment_id, users in self.user_history_dict.items():
             for user,tags in users.items():                    
                 for tag in tags:
                     # Clean 'question' by removing HTML tags and commas
-                    cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '')
+                    cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '').replace('\n', '').replace('\r', '')
                     # Clean 'comments' by removing HTML tags and commas
-                    cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '')
+                    cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '').replace('\n', '').replace('\r', '')
                     
                     # Concatenate the cleaned strings with other information and add it to the output string
-                    output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{cleaned_comments},{tag.prompt},{tag.value}\n"
+                    output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{tag.answer_score},{cleaned_comments},{tag.prompt},{tag.value}\n"
                     f.write(output_string)
         print("User data written to data/user_data.csv")
         f.close()
@@ -212,6 +212,9 @@ class Application:
         self.user_history = self._connector.getUserHistory()
         self.__getUserHistory(self.user_history)
 
+
+        
+   
         
     def assignTagReliability(self):
         """
@@ -226,7 +229,7 @@ class Application:
         Args:
             tags (list): List of tags
         """
-        # Populating the assignment_to_users hashmap based on the assignment_id and user_id
+        # Populating the assignment_to_users hashmap
         for tag in tags:
             if tag.assignment_id in self.assignment_to_user:
                 if tag.user_id in self.assignment_to_user[tag.assignment_id]:
@@ -238,23 +241,22 @@ class Application:
         
         # Calculating pattern detection results for each assignment and user
         for assignment_id, users in self.assignment_to_user.items():
-            for user,tags in users.items():
-
-                # Calculate pattern detection result using the PTV method with parameters 2, 6, and 2
-                        self.pattern_detection_result[assignment_id][user] = self.pattern_detection.PTV(self.assignment_to_user[assignment_id][user],lmin,lmax,minrep)        
+            for user, tags in users.items():
+                pattern_results = self.pattern_detection.PTV(tags, lmin, lmax, minrep)
+                self.pattern_detection_result[assignment_id][user] = pattern_results
         
-
         # Writing the pattern detection results to a file
-        f = open("data/Pattern_recognition.txt","w")
-        f.write("Assignment_id/User_id/PD_result/Pattern/Repetition\n")
-        for i in self.pattern_detection_result:
-            for j in self.pattern_detection_result[i]:
-                if self.pattern_detection_result[i][j][0]:
-                    f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"/"+str(self.pattern_detection_result[i][j][0])+"/"+str(self.pattern_detection_result[i][j][1])+"\n")
-                else:
-                    f.write(str(i)+"/"+str(j)+"/"+str(self.pattern_detection_result[i][j][2])+"\n")
+        with open("data/Pattern_recognition.txt", "w") as f:
+            f.write("Assignment_id/User_id/PD_result/Pattern/Repetition\n")
+            for assignment_id, users in self.pattern_detection_result.items():
+                for user, patterns in users.items():
+                    for pattern, count in patterns:
+                        if pattern != "Not_found":
+                            f.write(f"{assignment_id}/{user}/Found/{pattern}/{count}\n")
+                        else:
+                            f.write(f"{assignment_id}/{user}/Not_found\n")
         print("Pattern recognition results written to data/Pattern_recognition.txt")
-        f.close()
+
     
     def combine_csv_results(self, output_file):
         # Read the CSV files into DataFrames
@@ -280,17 +282,19 @@ class Application:
             lambda x: ''.join(['Y' if num == '1' else 'N' for num in ast.literal_eval(x)]) 
                     if isinstance(x, str) and x.startswith('(') else x
         )
+            
+        # Adding the 'Number of Tags Assigned' column
+        merged_df['Number_of_Tags_Assigned'] = merged_df['User_id'].apply(lambda user_id: self._connector.getAnswerCountTimesThree(user_id))
 
-        # Select the columns, ensuring each column name is a separate string in the list
-        final_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', 'PD_result', "Pattern", "Repetition", "Number_of_Tags"]]
-        final_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION', 'NUMBER OF TAGS SET']
+        # Adjust the column order and rename as needed
+        merged_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', "Number_of_Tags", "Number_of_Tags_Assigned",  'PD_result', 'Pattern', 'Repetition']]
+        merged_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'NUMBER OF TAGS SET', 'NUMBER OF TAGS ASSIGNED', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION']
 
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
-        final_df.to_csv(output_path, index=False, na_rep=' ')
+        merged_df.to_csv(output_path, index=False, na_rep=' ')
 
         print(f"Combined CSV created successfully as {output_path}")
-
 
 
 

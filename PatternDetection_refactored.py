@@ -84,39 +84,47 @@ class PatternDetection:
         return result
 
 
-    def PTV(self,tags, Lmin, Lmax, min_tags):
-        """
-        Searches for a repeating pattern in the given binary data within the period range [Lmin, Lmax].
-        Updates the result list whether pattern is found or not and then return the result list
+    def PTV(self, tags, Lmin, Lmax, min_tags):
+        tags.sort(key=lambda l: l.created_at)
+        bin_data = [i.value for i in tags]
 
-        Arguments:
-        bin_data -- the data to search within
-        Lmin -- the minimum length of the pattern to search for
-        Lmax -- the maximum length of the pattern to search for
-        min_rep -- the minimum number of repetitions of the pattern required to declare a match
-        """
-        tags.sort(key = lambda l: l.created_at)
-        bin_data = []
-        for i in tags:
-            bin_data.append(i.value)
-        # Initialize a boolean flag and result list to keep track of whether a pattern has been found
-        result = []
-        pattern_found = False
-
-        # Iterate over all possible period lengths from Lmin to Lmax
+        patterns_found = []
         for period in range(Lmin, Lmax + 1):
-            # Check for periodicity using the PeriodicityCheck function
-            result = self.PeriodicityCheck(bin_data, period, min_tags)
-            if (result[2]):
-                # If a pattern is found, set the flag to True and exit the loop
-                pattern_found = True
-                result[2] = "Found"
-                break
+            pattern_results = self.PeriodicityCheckAllPatterns(bin_data, period, min_tags)
+            for pattern, count in pattern_results:
+                if not any(set(pattern).issubset(set(p[0])) for p in patterns_found):
+                    patterns_found.append((pattern, count))
 
-        if not pattern_found:
-            result[2] = "Not_found"
-            return result
-            
+        if not patterns_found:
+            return [("Not_found", 0)]
         else:
-            return result
-            
+            return patterns_found
+
+    def PeriodicityCheckAllPatterns(self, bin_data, period, min_tags):
+        PlaceHolder = [self.PlaceHolderNode() for _ in range(period)]
+        for i in range(period):
+            PlaceHolder[i].LP = i % period
+            PlaceHolder[i].SP = i % period
+
+        patterns = []
+        for i in range(period, len(bin_data)):
+            pos = i % period
+            if bin_data[PlaceHolder[pos].LP] == bin_data[i]:
+                PlaceHolder[pos].LP = i
+                continue
+            else:
+                result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data, min_tags)
+                if result[2]:
+                    if result[0] not in (p[0] for p in patterns):
+                        patterns.append((result[0], result[1]))
+                
+                PlaceHolder[pos].SP = i
+                PlaceHolder[pos].LP = i
+
+        pos = (len(bin_data) - 1) % period
+        result = self.CheckPattern(PlaceHolder[pos].SP, PlaceHolder[pos].LP, period, bin_data, min_tags)
+        if result[2]:
+            if result[0] not in (p[0] for p in patterns):
+                patterns.append((result[0], result[1]))
+
+        return patterns
