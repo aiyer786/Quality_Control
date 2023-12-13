@@ -211,10 +211,6 @@ class Application:
         # User data
         self.user_history = self._connector.getUserHistory()
         self.__getUserHistory(self.user_history)
-
-
-        
-   
         
     def assignTagReliability(self):
         """
