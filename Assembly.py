@@ -290,9 +290,15 @@ class Application:
         merged_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', "Number_of_Tags", "Number_of_Tags_Assigned",  'PD_result', 'Pattern', 'Repetition']]
         merged_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'NUMBER OF TAGS SET', 'NUMBER OF TAGS ASSIGNED', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION']
 
+        #Ensuring that patterns of a single user appear in the same line
+        agg_funcs = {'ASSIGNMENT ID': 'min','TEAM ID':'min','FAST TAGGING LOG VALUES' :'min', 'FAST TAGGING SECONDS':'min','ALPHA VALUES':'min','NUMBER OF TAGS SET':'min',
+             'NUMBER OF TAGS ASSIGNED':'min','PATTERN FOUND OR NOT':'first', 'PATTERN': lambda x: x.tolist(),'PATTERN REPETITION': lambda x: x.tolist()}
+        # Group by 'id' and aggregate selected columns
+        result_df = merged_df.groupby('USER ID', as_index=False).agg(agg_funcs)
+
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
-        merged_df.to_csv(output_path, index=False, na_rep=' ')
+        result_df.to_csv(output_path, index=False, na_rep=' ')
 
         print(f"Combined CSV created successfully as {output_path}")
 
