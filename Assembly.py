@@ -279,8 +279,9 @@ class Application:
                     if isinstance(x, str) and x.startswith('(') else x
         )
             
-        # Adding the 'Number of Tags Assigned' column
-        merged_df['Number_of_Tags_Assigned'] = merged_df['User_id'].apply(lambda user_id: self._connector.getAnswerCountTimesThree(user_id))
+        # Adding the 'Number of Tags Assigned' column using 'team_id'
+        merged_df['Number_of_Tags_Assigned'] = merged_df['Team_id'].apply(lambda team_id: self._connector.getAnswerCountTimesThree(team_id))
+
 
         # Adjust the column order and rename as needed
         merged_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', "Number_of_Tags", "Number_of_Tags_Assigned",  'PD_result', 'Pattern', 'Repetition']]
