@@ -5,6 +5,8 @@ from Models.Team import Team
 from Models.User import User
 from Models.UserHistory import UserHistory
 import mysql.connector
+import csv
+
 
 class MySQL:
     """
@@ -29,7 +31,7 @@ class MySQL:
         tags = []
         
         # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
-        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1151);")
+        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1144);")
         result = self._cursor.fetchall()
         
         #creating answer tag objects and returning a list of the objects
@@ -46,7 +48,7 @@ class MySQL:
         tags = []
         
         # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
-        self._cursor.execute("SELECT DISTINCT a.id, ans.question_id, q.txt, t.assignment_id, a.answer_id, ans.answer, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id, ans.comments, tp.prompt FROM answer_tags a inner join answers ans on a.answer_id = ans.id inner join tag_prompt_deployments t on a.tag_prompt_deployment_id = t.id inner join tag_prompts tp on t.tag_prompt_id = tp.id inner join questions q on q.id = ans.question_id where t.assignment_id in (1151);")        
+        self._cursor.execute("SELECT DISTINCT a.id, ans.question_id, q.txt, t.assignment_id, a.answer_id, ans.answer, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id, ans.comments, tp.prompt FROM answer_tags a inner join answers ans on a.answer_id = ans.id inner join tag_prompt_deployments t on a.tag_prompt_deployment_id = t.id inner join tag_prompts tp on t.tag_prompt_id = tp.id inner join questions q on q.id = ans.question_id where t.assignment_id in (1144);")        
         result = self._cursor.fetchall()
         print("Query executed in getAnswerTags.........")
         #creating answer tag objects and returning a list of the objects
@@ -126,28 +128,37 @@ class MySQL:
                             
         return assignment_to_teams
             
-    def getAnswerCountTimesThree(self, user_id):
+    def getAnswerCountTimesThree(self, team_id):
         """
-        Fetches the number of answers associated with a given user_id, multiplies it by 3,
+        Fetches the number of answers associated with a given team_id, multiplies it by 3,
         and returns the result.
 
         Args:
-            user_id (int): The user ID to query for.
+            team_id (int): The team ID to query for.
 
         Returns:
-            int: The number of answers times three for the given user_id.
+            int: The number of answers times three for the given team_id.
         """
         query = '''
-        SELECT COUNT(a.id) * 3 AS answer_count_times_three
+        SELECT a.*
         FROM response_maps rm
         INNER JOIN responses r ON rm.id = r.map_id
         INNER JOIN answers a ON r.id = a.response_id
-        WHERE rm.reviewee_id = %s;
+        WHERE rm.reviewee_id = %s AND rm.type = "ReviewResponseMap" AND COALESCE(a.comments, '') <> '';
+
         '''
 
-        self._cursor.execute(query, (user_id,))
-        result = self._cursor.fetchone()
+        self._cursor.execute(query, (team_id,))
+        answers = self._cursor.fetchall()
 
-        # Return the result if not None, else return 0
-        return result[0] if result else 0
+        # Write to CSV file
+        with open('answers.csv', 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            # Writing headers
+            writer.writerow([i[0] for i in self._cursor.description])
+            writer.writerows(answers)
+            
+        # Return the number of rows in the answers, multiplied by 3
+        return len(answers) * 3
+
                 
