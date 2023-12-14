@@ -140,12 +140,11 @@ class MySQL:
             int: The number of answers times three for the given team_id.
         """
         query = '''
-        SELECT DISTINCT a.answer, a.comments, a.response_id
+        SELECT a.*
         FROM response_maps rm
         INNER JOIN responses r ON rm.id = r.map_id
         INNER JOIN answers a ON r.id = a.response_id
         WHERE rm.reviewee_id = %s AND rm.type = "ReviewResponseMap" AND COALESCE(a.comments, '') <> '';
-
 
         '''
 
