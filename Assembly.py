@@ -298,6 +298,29 @@ class Application:
         columns_to_blank = ['PATTERN', 	'PATTERN REPETITION']  
         result_df.loc[rows_not_found, columns_to_blank] = ''
 
+        #removing single quotes for each pattern found inside the array
+        result_df['PATTERN'] = result_df['PATTERN'].replace({'["\']': ''}, regex=True) 
+
+        #function that calculates the result of pattern length * pattern repetition
+        def calculate_score(row):
+            # Split the columns
+            patterns = row['PATTERN']
+            repetitions = row['PATTERN REPETITION']
+
+            # Check if 'PATTERN' and 'PATTERN REPETITION' are not None and not empty lists
+            if patterns is not None and repetitions is not None and patterns and repetitions:
+                total_score = sum(len(pattern) * repetition for pattern, repetition in zip(patterns, repetitions))
+                return total_score if total_score != 0 else None
+            else:
+                return None        
+
+        # Apply the function 
+        result_df['TOTAL REPEATING CHARACTERS'] = result_df.apply(calculate_score, axis=1)
+
+        # Handling any Nan values
+        rows = result_df[result_df['PATTERN FOUND OR NOT'] == 'Not_found'].index
+        result_df.loc[rows, 'TOTAL REPEATING CHARACTERS'] = ''
+
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
         result_df.to_csv(output_path, index=False, na_rep=' ')
