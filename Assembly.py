@@ -296,6 +296,11 @@ class Application:
         # Group by 'id' and aggregate selected columns
         result_df = merged_df.groupby('USER ID', as_index=False).agg(agg_funcs)
 
+        #removing 'nan' values for users where no pattern was found
+        rows_not_found = result_df[result_df['PATTERN FOUND OR NOT'] == 'Not_found'].index
+        columns_to_blank = ['PATTERN', 	'PATTERN REPETITION']  
+        result_df.loc[rows_not_found, columns_to_blank] = ''
+
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
         result_df.to_csv(output_path, index=False, na_rep=' ')
