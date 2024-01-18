@@ -9,7 +9,7 @@ from PatternDetection_refactored import PatternDetection
 import numpy as np
 import pandas as pd
 import os
-
+import csv
 
 class Application:
     """
@@ -98,6 +98,27 @@ class Application:
         print("User data written to data/user_data.csv")
         f.close()
   
+    def __getStudentsWhoTagged(self):
+
+        # Read the CSV data into a pandas DataFrame
+        df = pd.read_csv(("data/user_data.csv"))
+
+        # Group by 'Question' and count unique 'User_id's
+        unique_users_per_question = df.groupby('Question')['User_id'].nunique()
+
+        # Convert the result to a DataFrame for easier CSV export
+        result_df = unique_users_per_question.reset_index()
+        result_df.columns = ['Question', 'Unique_User_Count']
+
+        # Save the result to a new CSV file
+        output_file = 'number_of_students_who_tagged_each_question.csv'
+
+        # Write the combined results to a new CSV file
+        output_path = f"data/{output_file}"
+        result_df.to_csv(output_path, index=False, na_rep=' ',  quoting=csv.QUOTE_MINIMAL)
+
+        print("Results saved to 'number_of_students_who_tagged_each_question.csv'")
+
     def __getKrippendorffAlpha(self, alpha=None):
         """
         Calculates krippendorf alpha value for each user
@@ -211,6 +232,9 @@ class Application:
         # User data
         self.user_history = self._connector.getUserHistory()
         self.__getUserHistory(self.user_history)
+
+        #Number of students who tagged each question
+        self.__getStudentsWhoTagged()
         
     def assignTagReliability(self):
         """
@@ -253,7 +277,6 @@ class Application:
                             f.write(f"{assignment_id}/{user}/Not_found\n")
         print("Pattern recognition results written to data/Pattern_recognition.txt")
 
-    
     def combine_csv_results(self, output_file):
         # Read the CSV files into DataFrames
         interval_logs_df = pd.read_csv("data/Interval_logs.csv")
@@ -335,8 +358,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the Application with specific parameters.")
     parser.add_argument('--log_time_min', type=float, default=None, help="Filtering value for log time.")
     parser.add_argument('--alpha_min', type=float, default=None, help="Filtering value for krippendorff alpha.")
-    parser.add_argument('--min_pattern_len', type=int, default=5, help="Minimum value for pattern detection.")
-    parser.add_argument('--max_pattern_len', type=int, default=30, help="Maximum value for pattern detection.")
+    parser.add_argument('--min_pattern_len', type=int, default=2, help="Minimum value for pattern detection.")
+    parser.add_argument('--max_pattern_len', type=int, default=4, help="Maximum value for pattern detection.")
     parser.add_argument('--min_pattern_rep', type=int, default=15, help="Minimum repetition value for pattern detection.")
     args = parser.parse_args()
 
