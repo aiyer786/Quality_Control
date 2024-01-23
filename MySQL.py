@@ -31,7 +31,7 @@ class MySQL:
         tags = []
         
         # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
-        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1144);")
+        self._cursor.execute("SELECT a.id, t.assignment_id, a.answer_id, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id FROM answer_tags a inner join tag_prompt_deployments t on a.tag_prompt_deployment_id=t.id where t.assignment_id in (1151);")
         result = self._cursor.fetchall()
         
         #creating answer tag objects and returning a list of the objects
@@ -48,7 +48,7 @@ class MySQL:
         tags = []
         
         # Join query to fetch answer tag fields and assignment ID by performing inner join on answer_tags and tag_prompt_deployments tables
-        self._cursor.execute("SELECT DISTINCT a.id, ans.question_id, q.txt, t.assignment_id, a.answer_id, ans.answer, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id, ans.comments, tp.prompt FROM answer_tags a inner join answers ans on a.answer_id = ans.id inner join tag_prompt_deployments t on a.tag_prompt_deployment_id = t.id inner join tag_prompts tp on t.tag_prompt_id = tp.id inner join questions q on q.id = ans.question_id where t.assignment_id in (1144);")        
+        self._cursor.execute("SELECT DISTINCT a.id, ans.question_id, q.txt, t.assignment_id, a.answer_id, ans.answer, a.tag_prompt_deployment_id, a.user_id, a.value, a.created_at, a.updated_at, t.tag_prompt_id, ans.comments, tp.prompt FROM answer_tags a inner join answers ans on a.answer_id = ans.id inner join tag_prompt_deployments t on a.tag_prompt_deployment_id = t.id inner join tag_prompts tp on t.tag_prompt_id = tp.id inner join questions q on q.id = ans.question_id where t.assignment_id in (1151);")        
         result = self._cursor.fetchall()
         print("Query executed in getAnswerTags.........")
         #creating answer tag objects and returning a list of the objects

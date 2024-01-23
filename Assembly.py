@@ -9,7 +9,7 @@ from PatternDetection_refactored import PatternDetection
 import numpy as np
 import pandas as pd
 import os
-
+import csv
 
 class Application:
     """
@@ -67,11 +67,12 @@ class Application:
     
     def __getUserHistory(self, user_history) -> None:
         """
-        Calculates Interval logs
+        Calculates Interval logs and adds credibility score to each tag. 
 
         Args:
-            tags (list): List of tags
+            user_history (list): List of tags
         """         
+        # Populate user_history_dict
         for tag in user_history:
             if tag.assignment_id in self.user_history_dict:
                 if tag.user_id in self.user_history_dict[tag.assignment_id]:
@@ -81,23 +82,49 @@ class Application:
             else:
                 self.user_history_dict[tag.assignment_id] = {tag.user_id: [tag]}
 
-        # Calculating interval logs per assignment per user
-        f = open("data/user_data.csv","w")
-        f.write("User_id,Assignment_id,Question,Score,Review_Comment,Tag_Prompt,Tag_Value\n")
-        for assignment_id, users in self.user_history_dict.items():
-            for user,tags in users.items():                    
-                for tag in tags:
-                    # Clean 'question' by removing HTML tags and commas
-                    cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '').replace('\n', '').replace('\r', '')
-                    # Clean 'comments' by removing HTML tags and commas
-                    cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '').replace('\n', '').replace('\r', '')
-                    
-                    # Concatenate the cleaned strings with other information and add it to the output string
-                    output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{tag.answer_score},{cleaned_comments},{tag.prompt},{tag.value}\n"
-                    f.write(output_string)
-        print("User data written to data/user_data.csv")
-        f.close()
+        # Calculate credibility scores for tags
+        credibility_scores = self.tagger_classifier.calculate_tag_credibility_score(user_history)
+
+        # Writing data to CSV with credibility scores
+        with open("data/user_data.csv", "w") as f:
+            f.write("User_id,Assignment_id,Question,Score,Review_Comment,Tag_Prompt,Tag_Value,Credibility_Score\n")
+            for assignment_id, users in self.user_history_dict.items():
+                for user, tags in users.items():                    
+                    for tag in tags:
+                        # Clean 'question' and 'comments' by removing HTML tags and commas
+                        cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '').replace('\n', '').replace('\r', '')
+                        cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '').replace('\n', '').replace('\r', '')
+                        
+                        # Get credibility score for the tag
+                        tag_credibility_score = credibility_scores.get(tag.id, 0)
+
+                        # Concatenate the cleaned strings with other information and add it to the output string
+                        output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{tag.answer_score},{cleaned_comments},{tag.prompt},{tag.value},{tag_credibility_score}\n"
+                        f.write(output_string)
+
+            print("User data with credibility scores written to data/user_data.csv")
   
+    def __getStudentsWhoTagged(self):
+
+        # Read the CSV data into a pandas DataFrame
+        df = pd.read_csv(("data/user_data.csv"))
+
+        # Group by 'Question' and count unique 'User_id's
+        unique_users_per_question = df.groupby('Question')['User_id'].nunique()
+
+        # Convert the result to a DataFrame for easier CSV export
+        result_df = unique_users_per_question.reset_index()
+        result_df.columns = ['Question', 'Unique_User_Count']
+
+        # Save the result to a new CSV file
+        output_file = 'number_of_students_who_tagged_each_question.csv'
+
+        # Write the combined results to a new CSV file
+        output_path = f"data/{output_file}"
+        result_df.to_csv(output_path, index=False, na_rep=' ',  quoting=csv.QUOTE_MINIMAL)
+
+        print("Results saved to 'number_of_students_who_tagged_each_question.csv'")
+
     def __getKrippendorffAlpha(self, alpha=None):
         """
         Calculates krippendorf alpha value for each user
@@ -211,6 +238,9 @@ class Application:
         # User data
         self.user_history = self._connector.getUserHistory()
         self.__getUserHistory(self.user_history)
+
+        #Number of students who tagged each question
+        self.__getStudentsWhoTagged()
         
     def assignTagReliability(self):
         """
@@ -252,7 +282,20 @@ class Application:
                         else:
                             f.write(f"{assignment_id}/{user}/Not_found\n")
         print("Pattern recognition results written to data/Pattern_recognition.txt")
+    
+    def calculate_credibility(self, log_time, alpha, total_characters, log_time_max, alpha_max, characters_max):
 
+        # Check and handle non-numeric or missing values
+        log_time = 0 if not isinstance(log_time, (int, float)) or pd.isna(log_time) else log_time
+        alpha = 0 if not isinstance(alpha, (int, float)) or pd.isna(alpha) else alpha
+        total_characters = 0 if not isinstance(total_characters, (int, float)) or pd.isna(total_characters) else total_characters
+
+        normalized_log_time = log_time / log_time_max if log_time_max != 0 else 0
+        normalized_alpha = alpha / alpha_max if alpha_max != 0 else 0
+        normalized_characters = 1 - (total_characters / characters_max if characters_max != 0 else 0)
+        
+        credibility = (normalized_log_time + normalized_alpha + normalized_characters) / 3
+        return credibility
     
     def combine_csv_results(self, output_file):
         # Read the CSV files into DataFrames
@@ -317,9 +360,26 @@ class Application:
         # Apply the function 
         result_df['TOTAL REPEATING CHARACTERS'] = result_df.apply(calculate_score, axis=1)
 
-        # Handling any Nan values
+        # Handling any Nan values or cases where no pattern is found
         rows = result_df[result_df['PATTERN FOUND OR NOT'] == 'Not_found'].index
-        result_df.loc[rows, 'TOTAL REPEATING CHARACTERS'] = ''
+        result_df.loc[rows, 'TOTAL REPEATING CHARACTERS'] = 0  # Set to 0 instead of empty string
+
+
+         # Find the maximum values for normalization
+        log_time_max = result_df['FAST TAGGING SECONDS'].max()
+        alpha_max = result_df['ALPHA VALUES'].max()
+        characters_max = result_df['TOTAL REPEATING CHARACTERS'].max()
+
+        # Calculate credibility for each row
+        result_df['CREDIBILITY'] = result_df.apply(lambda row: self.calculate_credibility(
+            row['FAST TAGGING SECONDS'], row['ALPHA VALUES'], row['TOTAL REPEATING CHARACTERS'],
+            log_time_max, alpha_max, characters_max
+        ), axis=1)
+
+        # Adjust the column order and rename as needed
+        result_df = result_df[['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'NUMBER OF TAGS SET', 'NUMBER OF TAGS ASSIGNED', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION','TOTAL REPEATING CHARACTERS', 'CREDIBILITY']]
+
+
 
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
@@ -335,8 +395,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the Application with specific parameters.")
     parser.add_argument('--log_time_min', type=float, default=None, help="Filtering value for log time.")
     parser.add_argument('--alpha_min', type=float, default=None, help="Filtering value for krippendorff alpha.")
-    parser.add_argument('--min_pattern_len', type=int, default=5, help="Minimum value for pattern detection.")
-    parser.add_argument('--max_pattern_len', type=int, default=30, help="Maximum value for pattern detection.")
+    parser.add_argument('--min_pattern_len', type=int, default=2, help="Minimum value for pattern detection.")
+    parser.add_argument('--max_pattern_len', type=int, default=4, help="Maximum value for pattern detection.")
     parser.add_argument('--min_pattern_rep', type=int, default=15, help="Minimum repetition value for pattern detection.")
     args = parser.parse_args()
 

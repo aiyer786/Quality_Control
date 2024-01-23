@@ -35,6 +35,36 @@ class TaggerClassifier:
         result = curr/(len(tags)-1)
         return (result, len(tags))
     
+
+    def intervalLogsForTags(self, tags):
+        """
+        Calculates the interval log value for each tag.
+
+        Args:
+            tags (list): List of tags, each with a created_at attribute.
+
+        Returns:
+            dict: Dictionary with tag IDs as keys and interval log values as values.
+        """
+        interval_logs = {}
+        sorted_tags = sorted(tags, key=lambda tag: tag.created_at)
+
+        for i in range(1, len(sorted_tags)):
+            current_tag = sorted_tags[i]
+            previous_tag = sorted_tags[i-1]
+            time_diff = (current_tag.created_at - previous_tag.created_at).total_seconds()
+
+            # Avoid negative or zero time differences
+            if time_diff <= 0:
+                continue
+
+            # Calculate the interval log value
+            il_value = math.log(time_diff, 2)
+            interval_logs[current_tag.id] = il_value
+
+        return interval_logs
+
+
     def computeKrippendorffAlpha(self, data, users) -> list:
         """
         Krippendorff alpha algorithm implementation using krippendorff library
@@ -75,3 +105,53 @@ class TaggerClassifier:
                 alphas[users[i]] = 'not enough variation'
                 
         return alphas
+    
+    def calculate_tag_credibility_score(self, user_history):
+        """
+        Calculates the credibility score for each tag in user_history based on fast tagging log values and Krippendorff's alpha.
+
+        Args:
+            user_history (list): List of tag history items, each with attributes such as created_at, user_id, and tag values.
+
+        Returns:
+            dict: A dictionary with tag IDs as keys and credibility scores as values.
+        """
+        # Extract tags and users from user_history
+        tags = user_history
+        users = list(set(tag.user_id for tag in user_history))
+
+        # Prepare data for Krippendorff's alpha calculation
+        # Assuming that each row in data represents a tag and each column represents a user's rating for that tag
+        tag_ids = [tag.id for tag in user_history]
+        data = np.full((len(tag_ids), len(users)), np.nan)
+        for i, tag in enumerate(user_history):
+            user_index = users.index(tag.user_id)
+            data[i, user_index] = tag.value  # Assuming 'value' is the rating given by the user for the tag
+
+        credibility_scores = {}
+
+        # Calculate interval logs for each tag
+        interval_logs = self.intervalLogsForTags(tags)
+
+        # Calculate Krippendorff's alpha for each tag
+        alphas = self.computeKrippendorffAlpha(data, users)
+
+
+        # Normalize values (assuming il_value and alpha_value are already in a suitable range)
+        max_il_value = max(interval_logs.values(), default=1)
+        max_alpha_value = 1  # Assuming alpha values are between 0 and 1
+
+        # Calculate credibility score for each tag
+        for tag in tags:
+            tag_id = tag.id
+            il_value = interval_logs[tag_id] if tag_id in interval_logs else 0
+            alpha_value = alphas[tag_id] if tag_id in alphas else 0
+
+            normalized_il = il_value / max_il_value if max_il_value > 0 else 0
+            normalized_alpha = (alpha_value+1) / 2 if max_alpha_value > 0 else 0
+
+            # Calculate credibility score
+            credibility_score = (normalized_il + normalized_alpha) / 2
+            credibility_scores[tag_id] = credibility_score
+
+        return credibility_scores
