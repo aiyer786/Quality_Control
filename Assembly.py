@@ -67,11 +67,12 @@ class Application:
     
     def __getUserHistory(self, user_history) -> None:
         """
-        Calculates Interval logs
+        Calculates Interval logs and adds credibility score to each tag. 
 
         Args:
-            tags (list): List of tags
+            user_history (list): List of tags
         """         
+        # Populate user_history_dict
         for tag in user_history:
             if tag.assignment_id in self.user_history_dict:
                 if tag.user_id in self.user_history_dict[tag.assignment_id]:
@@ -81,22 +82,27 @@ class Application:
             else:
                 self.user_history_dict[tag.assignment_id] = {tag.user_id: [tag]}
 
-        # Calculating interval logs per assignment per user
-        f = open("data/user_data.csv","w")
-        f.write("User_id,Assignment_id,Question,Score,Review_Comment,Tag_Prompt,Tag_Value\n")
-        for assignment_id, users in self.user_history_dict.items():
-            for user,tags in users.items():                    
-                for tag in tags:
-                    # Clean 'question' by removing HTML tags and commas
-                    cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '').replace('\n', '').replace('\r', '')
-                    # Clean 'comments' by removing HTML tags and commas
-                    cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '').replace('\n', '').replace('\r', '')
-                    
-                    # Concatenate the cleaned strings with other information and add it to the output string
-                    output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{tag.answer_score},{cleaned_comments},{tag.prompt},{tag.value}\n"
-                    f.write(output_string)
-        print("User data written to data/user_data.csv")
-        f.close()
+        # Calculate credibility scores for tags
+        credibility_scores = self.tagger_classifier.calculate_tag_credibility_score(user_history)
+
+        # Writing data to CSV with credibility scores
+        with open("data/user_data.csv", "w") as f:
+            f.write("User_id,Assignment_id,Question,Score,Review_Comment,Tag_Prompt,Tag_Value,Credibility_Score\n")
+            for assignment_id, users in self.user_history_dict.items():
+                for user, tags in users.items():                    
+                    for tag in tags:
+                        # Clean 'question' and 'comments' by removing HTML tags and commas
+                        cleaned_question = re.sub('<.*?>', '', tag.question).replace(',', '').replace('\n', '').replace('\r', '')
+                        cleaned_comments = re.sub('<.*?>', '', tag.comments).replace(',', '').replace('\n', '').replace('\r', '')
+                        
+                        # Get credibility score for the tag
+                        tag_credibility_score = credibility_scores.get(tag.id, 0)
+
+                        # Concatenate the cleaned strings with other information and add it to the output string
+                        output_string = f"{str(user)},{str(assignment_id)},{cleaned_question},{tag.answer_score},{cleaned_comments},{tag.prompt},{tag.value},{tag_credibility_score}\n"
+                        f.write(output_string)
+
+            print("User data with credibility scores written to data/user_data.csv")
   
     def __getStudentsWhoTagged(self):
 
