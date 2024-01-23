@@ -282,7 +282,21 @@ class Application:
                         else:
                             f.write(f"{assignment_id}/{user}/Not_found\n")
         print("Pattern recognition results written to data/Pattern_recognition.txt")
+    
+    def calculate_credibility(self, log_time, alpha, total_characters, log_time_max, alpha_max, characters_max):
 
+        # Check and handle non-numeric or missing values
+        log_time = 0 if not isinstance(log_time, (int, float)) or pd.isna(log_time) else log_time
+        alpha = 0 if not isinstance(alpha, (int, float)) or pd.isna(alpha) else alpha
+        total_characters = 0 if not isinstance(total_characters, (int, float)) or pd.isna(total_characters) else total_characters
+
+        normalized_log_time = log_time / log_time_max if log_time_max != 0 else 0
+        normalized_alpha = alpha / alpha_max if alpha_max != 0 else 0
+        normalized_characters = 1 - (total_characters / characters_max if characters_max != 0 else 0)
+        
+        credibility = (normalized_log_time + normalized_alpha + normalized_characters) / 3
+        return credibility
+    
     def combine_csv_results(self, output_file):
         # Read the CSV files into DataFrames
         interval_logs_df = pd.read_csv("data/Interval_logs.csv")
@@ -346,9 +360,26 @@ class Application:
         # Apply the function 
         result_df['TOTAL REPEATING CHARACTERS'] = result_df.apply(calculate_score, axis=1)
 
-        # Handling any Nan values
+        # Handling any Nan values or cases where no pattern is found
         rows = result_df[result_df['PATTERN FOUND OR NOT'] == 'Not_found'].index
-        result_df.loc[rows, 'TOTAL REPEATING CHARACTERS'] = ''
+        result_df.loc[rows, 'TOTAL REPEATING CHARACTERS'] = 0  # Set to 0 instead of empty string
+
+
+         # Find the maximum values for normalization
+        log_time_max = result_df['FAST TAGGING SECONDS'].max()
+        alpha_max = result_df['ALPHA VALUES'].max()
+        characters_max = result_df['TOTAL REPEATING CHARACTERS'].max()
+
+        # Calculate credibility for each row
+        result_df['CREDIBILITY'] = result_df.apply(lambda row: self.calculate_credibility(
+            row['FAST TAGGING SECONDS'], row['ALPHA VALUES'], row['TOTAL REPEATING CHARACTERS'],
+            log_time_max, alpha_max, characters_max
+        ), axis=1)
+
+        # Adjust the column order and rename as needed
+        result_df = result_df[['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'NUMBER OF TAGS SET', 'NUMBER OF TAGS ASSIGNED', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION','TOTAL REPEATING CHARACTERS', 'CREDIBILITY']]
+
+
 
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
