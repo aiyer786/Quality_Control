@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import os
 import csv
+import ast
 
 class Application:
     """
@@ -107,7 +108,7 @@ class Application:
     def __getStudentsWhoTagged(self):
 
         # Read the CSV data into a pandas DataFrame
-        df = pd.read_csv(("data/user_data.csv"))
+        df = pd.read_csv(("data/user_data.csv"), encoding='cp1252')
 
         # Group by 'Question' and count unique 'User_id's
         unique_users_per_question = df.groupby('Question')['User_id'].nunique()
@@ -248,6 +249,104 @@ class Application:
         """
         self.__calculateAgreementDisagreement()
 
+
+
+    def find_long_consecutiveY(self, string):
+        """
+        This function finds the lengths of all substrings of consecutive 'Y's in the given string that are longer than 10.
+        
+        Parameters:
+        string (dict): A dictionary where one of the keys is "Tags" and its value is a string of 'Y's and 'N's.
+
+        Returns:
+        list: A list of integers representing the lengths of all substrings of consecutive 'Y's that are longer than 10.
+        """
+        substrings = []
+        current_length = 0
+        for c in string["Tags"]:
+            if c == 'Y':
+                current_length += 1
+            else:
+                if current_length >= 10:
+                    substrings.append(current_length)
+                current_length = 0
+        # Check the last substring
+        if current_length > 10:
+            substrings.append(current_length)
+
+        return substrings
+
+    def find_long_consecutiveN(self, string):
+        """
+        This function finds the lengths of all substrings of consecutive 'N's in the given string that are longer than 10.
+        
+        Parameters:
+        string (dict): A dictionary where one of the keys is "Tags" and its value is a string of 'Y's and 'N's.
+
+        Returns:
+        list: A list of integers representing the lengths of all substrings of consecutive 'N's that are longer than 10.
+        """
+        substrings = []
+        current_length = 0
+        for c in string["Tags"]:
+            if c == 'N':
+                current_length += 1
+            else:
+                if current_length > 10:
+                    substrings.append(current_length)
+                current_length = 0
+        # Check the last substring
+        if current_length > 10:
+            substrings.append(current_length)
+
+        return substrings
+
+    def replace(self, tag_list):
+        """
+        This function replaces '1' with 'Y', '-1' with 'N' in the given list, and removes all other elements.
+
+        Parameters:
+        tag_list (str): A string representation of a list where each element is either '1', '-1', or something else.
+
+        Returns:
+        list: A list of 'Y's and 'N's.
+        """
+        # Convert the string representation of a list to an actual list
+        tag_list = ast.literal_eval(tag_list)
+
+        # Replace '1' with 'Y' and '-1' with 'N', and remove all other elements
+        tag_list = ['Y' if tag == '1' else 'N' if tag == '-1' else None for tag in tag_list]
+        tag_list = [tag for tag in tag_list if tag is not None]
+
+        return tag_list
+    
+    def find_Ys_Ns(self, tags_file_path):
+        """
+        This function reads a CSV file, applies transformations to the 'Tags' column, and writes the results to a new CSV file.
+
+        Parameters:
+        tags_file_path (str): The path to the CSV file.
+
+        Returns:
+        None
+        """
+        # Read the CSV file
+        df = pd.read_csv(tags_file_path)
+
+        df['Tags'] = df['Tags'].apply(self.replace)
+        df['Tags'] = df['Tags'].apply(lambda x: eval(x) if isinstance(x, str) else x)
+        df['Consecutive Ys Pattern Count'] = ''
+        df['Consecutive Ns Pattern Count'] = ''
+        df['Consecutive Ys Pattern Count'] = df.apply(self.find_long_consecutiveY, axis = 1)
+        df['Consecutive Ns Pattern Count'] = df.apply(self.find_long_consecutiveN, axis = 1)
+        df['Total Repeating Ys'] = df['Consecutive Ys Pattern Count'].apply(lambda arr: int(np.sum(arr)))
+        df['Total Repeating Ns'] = df['Consecutive Ns Pattern Count'].apply(lambda arr: int(np.sum(arr)))
+
+        df.to_csv('data/Longest_Y_N.csv', index = False)
+        print("Consecutive Ys and Ns Pattern results written to 'data/Longest_Y_N.csv'")
+
+
+
     def __getPatternResults(self, tags, lmin=5, lmax=30, minrep=15) -> None:
         """
         Calculates pattern detection results
@@ -265,11 +364,27 @@ class Application:
             else:
                 self.assignment_to_user[tag.assignment_id] = {tag.user_id: [tag]}
         
+
         # Calculating pattern detection results for each assignment and user
         for assignment_id, users in self.assignment_to_user.items():
+            user_df = pd.DataFrame(columns = ["User", "Tags"])
             for user, tags in users.items():
+                
+
+                temp_tags = tags
+                temp_tags.sort(key=lambda l: l.created_at)
+                temp_bin_data = [i.value for i in temp_tags]
+                temp_user = pd.DataFrame({"User": user, "Tags": [temp_bin_data]})
+                user_df = pd.concat([user_df, temp_user], ignore_index=True)
+
+
                 pattern_results = self.pattern_detection.PTV(tags, lmin, lmax, minrep)
                 self.pattern_detection_result[assignment_id][user] = pattern_results
+
+            user_df.to_csv("data/user_tags.csv", index=False)
+            print("User Tags are written to 'data/user_tags.csv'")
+        
+        self.find_Ys_Ns("data/user_tags.csv")
         
         # Writing the pattern detection results to a file
         with open("data/Pattern_recognition.txt", "w") as f:
@@ -295,8 +410,49 @@ class Application:
         normalized_characters = 1 - (total_characters / characters_max if characters_max != 0 else 0)
         
         credibility = (normalized_log_time + normalized_alpha + normalized_characters) / 3
-        return credibility
+        return round(credibility, 5)
     
+
+
+    def remove_indices_smaller(self, pattern, rep):
+        indices_to_remove = [i for i, p in enumerate(pattern) if len(set(p))<2]
+        return [r for i, r in enumerate(rep) if i not in indices_to_remove]
+
+    def update_results(self, path):
+        df = pd.read_csv(path)
+        df['Pattern'] = df['Pattern'].fillna(df['Pattern'].apply(lambda x: []))
+        df['Pattern Repetition'] = df['Pattern Repetition'].fillna(df['Pattern Repetition'].apply(lambda x: []))
+        df['Pattern Repetition'] = df['Pattern Repetition'].apply(lambda x: eval(x) if isinstance(x, str) else x)
+        df['Pattern'] = df['Pattern'].apply(lambda x: eval(x) if isinstance(x, str) else x)
+        df['Pattern Repetition'] = df.apply(lambda row: self.remove_indices_smaller(row['Pattern'], row['Pattern Repetition']), axis=1)
+        df['Pattern'] = df['Pattern'].apply(lambda x:[item for item in x if len(set(item)) > 1])
+        df['Total Repeating Characters'] = df['Pattern Repetition'].apply(lambda arr: int(np.sum(arr)))
+        
+        # Check for pattern existence and create new column
+        df['Pattern Found or Not'] = df['Pattern'].apply(lambda patterns: 'Found' if any(patterns) else 'Not Found')
+    
+        return df
+
+    def process_and_save_final_results(self, results_filename, longest_yn_filename, output_filename):
+            # Read CSV files
+            long_y_n = pd.read_csv(longest_yn_filename)
+            df = pd.read_csv(results_filename)
+            
+            # Merge DataFrames
+            merged_df = df.merge(long_y_n, left_on='User ID', right_on='User')
+            
+            # Reorder columns and rename Credibility column
+            cred_column = merged_df.pop("Credibility")
+            merged_df["Credibility"] = cred_column
+            merged_df.drop(columns=["User", "Tags"], inplace=True)
+
+            # Save to CSV
+            merged_df.to_csv(output_filename, index=False)
+
+            print(f"Final file combining all the results is written at {output_filename}")
+
+
+
     def combine_csv_results(self, output_file):
         # Read the CSV files into DataFrames
         interval_logs_df = pd.read_csv("data/Interval_logs.csv")
@@ -313,7 +469,7 @@ class Application:
         # Replace 'N/A' with a space in the entire DataFrame
         merged_df.replace('N/A', ' ', inplace=True)
         
-        # Replace '-1' with a space in the 'FAST TAGGING LOG VALUES' column
+        # Replace '-1' with a space in the 'Fast Tagging Log Values' column
         merged_df['IL_result'] = merged_df['IL_result'].apply(lambda x: ' ' if x == -1 else x)
 
         # Replace pattern strings like "('-1', '1', '1', '-1', '1', '1')" with "NYYNYY"
@@ -322,35 +478,35 @@ class Application:
                     if isinstance(x, str) and x.startswith('(') else x
         )
             
-        # Adding the 'Number of Tags Assigned' column using 'team_id'
-        merged_df['Number_of_Tags_Assigned'] = merged_df['Team_id'].apply(lambda team_id: self._connector.getAnswerCountTimesThree(team_id))
+        # Adding the 'Number of Tags Available' column using 'team_id'
+        merged_df['Number_of_Tags_Available'] = merged_df['Team_id'].apply(lambda team_id: self._connector.getAnswerCount(team_id))
 
 
         # Adjust the column order and rename as needed
-        merged_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', "Number_of_Tags", "Number_of_Tags_Assigned",  'PD_result', 'Pattern', 'Repetition']]
-        merged_df.columns = ['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'NUMBER OF TAGS SET', 'NUMBER OF TAGS ASSIGNED', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION']
+        merged_df = merged_df[['User_id', 'Assignment_id', 'Team_id', 'IL_result', 'Time', 'Alphas', "Number_of_Tags", "Number_of_Tags_Available",  'PD_result', 'Pattern', 'Repetition']]
+        merged_df.columns = ['User ID', 'Assignment ID', 'Team ID', 'Fast Tagging Log Values', 'Fast Tagging Seconds', 'Alpha Values', 'Number of Tags Set', 'Number of Tags Available', 'Pattern Found or Not', 'Pattern', 'Pattern Repetition']
 
         #Ensuring that patterns of a single user appear in the same line
-        agg_funcs = {'ASSIGNMENT ID': 'min','TEAM ID':'min','FAST TAGGING LOG VALUES' :'min', 'FAST TAGGING SECONDS':'min','ALPHA VALUES':'min','NUMBER OF TAGS SET':'min',
-             'NUMBER OF TAGS ASSIGNED':'min','PATTERN FOUND OR NOT':'first', 'PATTERN': lambda x: x.tolist(),'PATTERN REPETITION': lambda x: x.tolist()}
+        agg_funcs = {'Assignment ID': 'min','Team ID':'min','Fast Tagging Log Values' :'min', 'Fast Tagging Seconds':'min','Alpha Values':'min','Number of Tags Set':'min',
+             'Number of Tags Available':'min','Pattern Found or Not':'first', 'Pattern': lambda x: x.tolist(),'Pattern Repetition': lambda x: x.tolist()}
         # Group by 'id' and aggregate selected columns
-        result_df = merged_df.groupby('USER ID', as_index=False).agg(agg_funcs)
+        result_df = merged_df.groupby('User ID', as_index=False).agg(agg_funcs)
 
         #removing 'nan' values for users where no pattern was found
-        rows_not_found = result_df[result_df['PATTERN FOUND OR NOT'] == 'Not_found'].index
-        columns_to_blank = ['PATTERN', 	'PATTERN REPETITION']  
+        rows_not_found = result_df[result_df['Pattern Found or Not'] == 'Not_found'].index
+        columns_to_blank = ['Pattern', 	'Pattern Repetition']  
         result_df.loc[rows_not_found, columns_to_blank] = ''
 
         #removing single quotes for each pattern found inside the array
-        result_df['PATTERN'] = result_df['PATTERN'].replace({'["\']': ''}, regex=True) 
+        result_df['Pattern'] = result_df['Pattern'].replace({'["\']': ''}, regex=True) 
 
         #function that calculates the result of pattern length * pattern repetition
         def calculate_score(row):
             # Split the columns
-            patterns = row['PATTERN']
-            repetitions = row['PATTERN REPETITION']
+            patterns = row['Pattern']
+            repetitions = row['Pattern Repetition']
 
-            # Check if 'PATTERN' and 'PATTERN REPETITION' are not None and not empty lists
+            # Check if 'Pattern' and 'Pattern Repetition' are not None and not empty lists
             if patterns is not None and repetitions is not None and patterns and repetitions:
                 total_score = sum(len(pattern) * repetition for pattern, repetition in zip(patterns, repetitions))
                 return total_score if total_score != 0 else None
@@ -358,35 +514,39 @@ class Application:
                 return None        
 
         # Apply the function 
-        result_df['TOTAL REPEATING CHARACTERS'] = result_df.apply(calculate_score, axis=1)
+        result_df['Total Repeating Characters'] = result_df.apply(calculate_score, axis=1)
 
         # Handling any Nan values or cases where no pattern is found
-        rows = result_df[result_df['PATTERN FOUND OR NOT'] == 'Not_found'].index
-        result_df.loc[rows, 'TOTAL REPEATING CHARACTERS'] = 0  # Set to 0 instead of empty string
+        rows = result_df[result_df['Pattern Found or Not'] == 'Not_found'].index
+        result_df.loc[rows, 'Total Repeating Characters'] = 0  # Set to 0 instead of empty string
 
 
          # Find the maximum values for normalization
-        log_time_max = result_df['FAST TAGGING SECONDS'].max()
-        alpha_max = result_df['ALPHA VALUES'].max()
-        characters_max = result_df['TOTAL REPEATING CHARACTERS'].max()
+        log_time_max = result_df['Fast Tagging Seconds'].max()
+        alpha_max = result_df['Alpha Values'].max()
+        characters_max = result_df['Total Repeating Characters'].max()
 
         # Calculate credibility for each row
-        result_df['CREDIBILITY'] = result_df.apply(lambda row: self.calculate_credibility(
-            row['FAST TAGGING SECONDS'], row['ALPHA VALUES'], row['TOTAL REPEATING CHARACTERS'],
+        result_df['Credibility'] = result_df.apply(lambda row: self.calculate_credibility(
+            row['Fast Tagging Seconds'], row['Alpha Values'], row['Total Repeating Characters'],
             log_time_max, alpha_max, characters_max
         ), axis=1)
 
         # Adjust the column order and rename as needed
-        result_df = result_df[['USER ID', 'ASSIGNMENT ID', 'TEAM ID', 'FAST TAGGING LOG VALUES', 'FAST TAGGING SECONDS', 'ALPHA VALUES', 'NUMBER OF TAGS SET', 'NUMBER OF TAGS ASSIGNED', 'PATTERN FOUND OR NOT', 'PATTERN', 'PATTERN REPETITION','TOTAL REPEATING CHARACTERS', 'CREDIBILITY']]
-
-
+        result_df = result_df[['User ID', 'Assignment ID', 'Team ID', 'Fast Tagging Log Values', 'Fast Tagging Seconds', 'Alpha Values', 'Number of Tags Set', 'Number of Tags Available', 'Pattern Found or Not', 'Pattern', 'Pattern Repetition','Total Repeating Characters', 'Credibility']]
 
         # Write the combined results to a new CSV file
         output_path = f"data/{output_file}"
         result_df.to_csv(output_path, index=False, na_rep=' ')
 
+        # Update the result files for non-consecutive patterns
+        result_df = self.update_results(output_path)
+        result_df.to_csv(output_path, index=False, na_rep=' ')
+
+
         print(f"Combined CSV created successfully as {output_path}")
 
+        self.process_and_save_final_results("data/Combined_Results.csv", "data/Longest_Y_N.csv", "data/1166_Tagger_Results.csv")
 
 
 if __name__ == "__main__":
@@ -395,11 +555,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the Application with specific parameters.")
     parser.add_argument('--log_time_min', type=float, default=None, help="Filtering value for log time.")
     parser.add_argument('--alpha_min', type=float, default=None, help="Filtering value for krippendorff alpha.")
-    parser.add_argument('--min_pattern_len', type=int, default=2, help="Minimum value for pattern detection.")
-    parser.add_argument('--max_pattern_len', type=int, default=4, help="Maximum value for pattern detection.")
+    parser.add_argument('--min_pattern_len', type=int, default=10, help="Minimum value for pattern detection.")
+    parser.add_argument('--max_pattern_len', type=int, default=50, help="Maximum value for pattern detection.")
     parser.add_argument('--min_pattern_rep', type=int, default=15, help="Minimum repetition value for pattern detection.")
     args = parser.parse_args()
 
     app = Application()
+ 
     app.assignTaggerReliability(args.log_time_min, args.alpha_min, args.min_pattern_len, args.max_pattern_len, args.min_pattern_rep)
     app.combine_csv_results('Combined_Results.csv')
