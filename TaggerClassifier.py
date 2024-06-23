@@ -152,6 +152,6 @@ class TaggerClassifier:
 
             # Calculate credibility score
             credibility_score = (normalized_il + normalized_alpha) / 2
-            credibility_scores[tag_id] = credibility_score
+            credibility_scores[tag_id] = round(credibility_score, 5)
 
         return credibility_scores

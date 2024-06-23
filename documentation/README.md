@@ -43,7 +43,24 @@ The `assembly.py` file serves as the master file for the application, housing wr
 ### CombineCSVResults Function
 
 - The `CombineCSVResults` function consolidates all CSV and TXT files into a single file based on assignment ID and UserID. It addresses edge cases, such as those with no patterns, and computes credibility scores using the `CalculateCredibility` function.
+<br><br>
+### find_long_consecutiveY Function
+
+- The `find_long_consecutiveY` function is designed to find long sequence of 'Y' characters in the given list of tags. It returns a list of consecutive Y's greater than 10 in a list.
+<br><br>
+### find_long_consecutiveN Function
+
+- The `find_long_consecutiveN` function is designed to find long sequence of 'N' characters in the given list of tags. It returns a list of consecutive N's greater than 10 in a list.
+<br><br>
+### replace Function
+
+- The `replace` function is used to convert the existing CSV tags which are present as 1 and -1 in the sql. 1 is replaced as 'Y' and -1 is replaced as 'N'. We return a list of Y's and N's.
+<br><br>
+### find_Ys_Ns Function
+
+- The `find_Ys_Ns` function is used to apply transformation to the whole CSV file. 
 <br><br><br>
+
 ## MySQL.py
 
 This file facilitates connection to a MySQL database, where a dump file is currently utilized to operate the database. Once connected, the file provides helper functions for interacting with the database.
@@ -134,3 +151,13 @@ This Python code defines a class called `PatternDetection`, which contains metho
 
 4. **Answers.csv:**
    - Column Names: id, question_id, answer, comments, response_id
+
+5. **User_tags.csv**
+   - Column Names: User, Tags
+
+6. **Longest_Y_N.csv**
+   - Columns Names: User, Tags, Consecutive Ys Pattern Count, Consecutive Ns Pattern Count, Total Repeating Ys, Total Repeating Ns
+
+7. **{AssignmentID}_Tagger_Results.csv**
+   - Colummn Names: User ID, Assignment ID, Team ID, Fast Tagging Log Values, Fast Tagging Seconds, Alpha Values, Number of Tags Set, Number of Tags Available, Pattern Found or Not, Pattern, Pattern Repetition, Total Repeating Characters, Consecutive Ys Pattern Count, Consecutive Ns Pattern Count, Total Repeating Ys, Total Repeating Ns, Credibility
+
