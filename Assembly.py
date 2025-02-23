@@ -12,9 +12,11 @@ import os
 import csv
 import ast
 
-class Application:
+class Application: 
     """
-    Master class of the Application
+     Master class of the Application, integrating various modules for processing crowd-labeled data 
+    and performing quality control tasks such as speed-based tagging analysis, 
+    inter-rater reliability (Krippendorff's alpha), tag credibility assessment, and pattern detection.
     """
     def __init__(self) -> None:
         self._connector = MySQL()                       # MySQL connector to call methods of MySQL class
@@ -32,10 +34,29 @@ class Application:
         
     def __getIntervalLogs(self, tags, log_time=None) -> None:
         """
-        Calculates Interval logs
+         Calculates interval log values for each user, which are used to evaluate how quickly users assigned tags.
+        Helps identify users who might have tagged "too fast," indicating potentially unreliable data.
+
+        - **Interval Log Calculation**:
+          For each user, this method calculates:
+          * Time intervals between consecutive tags.
+          * Log base 2 transformation of these intervals to reduce the effect of large gaps.
+          * Average log interval time for each user.
+
+        - **Credibility Implication**:
+          Users with a very low average log interval time might have tagged too quickly, suggesting poor quality.
+
+        Writes results to a CSV:
+        - `Assignment_id`: Assignment to which the user belongs.
+        - `User_id`: User who assigned the tags.
+        - `IL_result`: Average log of interval times.
+        - `Time`: Derived time spent tagging from interval logs (converted back from log).
+        - `Number_of_Tags`: Total number of tags assigned by the user.
 
         Args:
-            tags (list): List of tags
+            tags (list): List of tags fetched from the database (list of `AnswerTag` objects).
+            log_time (float, optional): Minimum acceptable log time; users with lower values are excluded.  
+
         """
         # Populating the assignment_to_users hashmap based on the assignment_id and user_id
         for tag in tags:
@@ -68,10 +89,16 @@ class Application:
     
     def __getUserHistory(self, user_history) -> None:
         """
-        Calculates Interval logs and adds credibility score to each tag. 
+        Processes user tagging history, calculates tag credibility scores, 
+        and writes the results to a CSV.
 
+        - **Credibility Score Calculation**:
+          * Combines fast tagging log values with Krippendorff's alpha to assess tag reliability.
+          * Tags with high credibility scores are deemed more reliable.
+          * Credibility score normalization ensures fair comparisons across multiple users:
+            Normalized log time and normalized alpha are averaged to determine reliability.
         Args:
-            user_history (list): List of tags
+            user_history (list): List of user tags fetched from the database.
         """         
         # Populate user_history_dict
         for tag in user_history:
@@ -107,6 +134,21 @@ class Application:
   
     def __getStudentsWhoTagged(self):
 
+        """
+         Analyzes student participation by calculating the number of unique users who tagged each question.
+
+        **Use Case**:
+        Helpful for understanding how many diverse opinions contributed to tagging specific questions.
+        
+        **Metrics**:
+        Groups data by questions and counts distinct user IDs for each question.
+
+        Writes results to a CSV (`data/number_of_students_who_tagged_each_question.csv`):
+        - `Question`: The question being tagged.
+        - `Unique_User_Count`: Count of unique users who tagged that question.
+
+        """
+
         # Read the CSV data into a pandas DataFrame
         df = pd.read_csv(("data/user_data.csv"), encoding='cp1252')
 
@@ -127,9 +169,23 @@ class Application:
         print("Results saved to 'number_of_students_who_tagged_each_question.csv'")
 
     def __getKrippendorffAlpha(self, alpha=None):
-        """
-        Calculates krippendorf alpha value for each user
-        """
+            """
+            Computes Krippendorff's alpha to measure inter-rater reliability (IRR) within teams.
+
+            - **Purpose**:
+            Assesses the consistency of taggers in a team by analyzing agreements on assigned tag values.
+            Alpha ranges from -1 (complete disagreement) to 1 (perfect agreement).
+
+            - **Process**:
+            - Builds a matrix where rows = tagged items, columns = users, values = tag values.
+            - Uses the matrix to calculate alpha for each team or user.
+
+            - **Output**:
+            Writes `Assignment_id`, `Team_id`, `User_id`, and `Alphas` to `data/krippendorff.csv`.
+
+            Args:
+                alpha (float, optional): Minimum acceptable alpha for filtering. Defaults to None.
+            """
         
         for assignment in self.assignment_to_teams:
             for team in self.assignment_to_teams[assignment].teams:
@@ -180,6 +236,21 @@ class Application:
         f.close()
      
     def __calculateAgreementDisagreement(self):
+        """
+        Computes agreement/disagreement among taggers based on the consensus for tag values.
+
+        - **Metrics**:
+          For each tag, calculates:
+          1. Dominant value assigned to a tag (e.g., `1` or `-1`).
+          2. Fraction indicating the level of agreement among users for that value.
+          High fraction values indicate agreement; lower values suggest disagreement.
+
+        Writes results to a CSV (`tags.csv`):
+        - `Assignment_id`, `team_id`, `answer_id`, `tag_prompt_id`
+        - `value`: Dominant tag value.
+        - `fraction`: Agreement fraction for the tag value.
+
+        """
         for assignment in self.assignment_to_teams:
             for team in self.assignment_to_teams[assignment].teams:
                 data = []
@@ -222,9 +293,19 @@ class Application:
         f.close()        
         
     def assignTaggerReliability(self, log_time=None, alpha=None, lmin=5, lmax=30, minrep=15):
-        """
-        Function used to compute Interval Logs, Krippendorff Alpha and Pattern detection
-        """
+    """
+    Executes the pipeline to evaluate tagger reliability by combining several analyses:
+      1. **Interval Logs**: Measures tagging speed (log transformations of time gaps).
+      2. **Krippendorff Alpha**: Assesses inter-rater agreement to evaluate tag consistency.
+      3. **Pattern Detection**: Detects repetitive tagging behavior (defined by pattern length and repetitions).
+      4. **Credibility Scores**: Combines metrics to quantify individual tagger reliability.
+
+    Args:
+        log_time (float): Minimum threshold for interval log time.
+        alpha (float): Minimum team consistency alpha.
+        lmin (int), lmax (int): Min/max pattern lengths for detection.
+        minrep (int): Minimum repetitions to qualify a pattern.
+    """
         # Interval logs
         self.tags = self._connector.getAnswerTags()
         self.__getIntervalLogs(self.tags, log_time)
@@ -252,15 +333,18 @@ class Application:
 
 
     def find_long_consecutiveY(self, string):
-        """
-        This function finds the lengths of all substrings of consecutive 'Y's in the given string that are longer than 10.
-        
-        Parameters:
-        string (dict): A dictionary where one of the keys is "Tags" and its value is a string of 'Y's and 'N's.
+    """
+    Finds sequences of at least 10 consecutive 'Y's (yes tags) in the tagging history.
 
-        Returns:
-        list: A list of integers representing the lengths of all substrings of consecutive 'Y's that are longer than 10.
-        """
+    - **Purpose**:
+      Detects repetitive, predictable sequences in 'Y' tags, which may indicate biased tagging behavior.
+
+    Args:
+        string (dict): A dictionary containing a "Tags" string with 'Y'/'N' values.
+
+    Returns:
+        list: Lengths of 'Y' sequences where length > 10.
+    """
         substrings = []
         current_length = 0
         for c in string["Tags"]:
@@ -277,15 +361,18 @@ class Application:
         return substrings
 
     def find_long_consecutiveN(self, string):
-        """
-        This function finds the lengths of all substrings of consecutive 'N's in the given string that are longer than 10.
-        
-        Parameters:
-        string (dict): A dictionary where one of the keys is "Tags" and its value is a string of 'Y's and 'N's.
+    """
+    Finds sequences of at least 10 consecutive 'N's (no tags) in the tagging history.
 
-        Returns:
-        list: A list of integers representing the lengths of all substrings of consecutive 'N's that are longer than 10.
-        """
+    - **Purpose**:
+      Identifies long runs of 'N' tags, potentially exposing tagging irregularities or patterns.
+
+    Args:
+        string (dict): Dictionary with a "Tags" string containing 'Y'/'N' values.
+
+    Returns:
+        list: Lengths of 'N' sequences where length > 10.
+    """
         substrings = []
         current_length = 0
         for c in string["Tags"]:
@@ -302,15 +389,20 @@ class Application:
         return substrings
 
     def replace(self, tag_list):
-        """
-        This function replaces '1' with 'Y', '-1' with 'N' in the given list, and removes all other elements.
+    """
+    Converts raw tag data into a cleaned format by mapping:
+      - `1` -> 'Y', `-1` -> 'N', and removing all other values.
 
-        Parameters:
-        tag_list (str): A string representation of a list where each element is either '1', '-1', or something else.
+    - **Purpose**:
+      Prepares tag data for analysis by normalizing inconsistent or irrelevant values.
 
-        Returns:
-        list: A list of 'Y's and 'N's.
-        """
+    Args:
+        tag_list (str): String representation of tags (e.g., "[1, -1, 1]").
+
+    Returns:
+        list: A cleaned list of 'Y' and 'N' values.
+    """
+
         # Convert the string representation of a list to an actual list
         tag_list = ast.literal_eval(tag_list)
 
@@ -321,15 +413,21 @@ class Application:
         return tag_list
     
     def find_Ys_Ns(self, tags_file_path):
-        """
-        This function reads a CSV file, applies transformations to the 'Tags' column, and writes the results to a new CSV file.
 
-        Parameters:
-        tags_file_path (str): The path to the CSV file.
+            """
+            Processes tag data from a CSV file to identify repetitive patterns of 'Y's and 'N's.
 
-        Returns:
-        None
-        """
+            - **Actions**:
+            - Reads and cleans the "Tags" column.
+            - Calculates the longest sequences of consecutive 'Y's and 'N's.
+            - Records totals of repetitive patterns.
+
+            - **Output**:
+            Writes longest sequence information to `data/Longest_Y_N.csv`.
+
+            Args:
+                tags_file_path (str): Path to the CSV containing raw tag data.
+            """
         # Read the CSV file
         df = pd.read_csv(tags_file_path)
 
@@ -349,10 +447,20 @@ class Application:
 
     def __getPatternResults(self, tags, lmin=5, lmax=30, minrep=15) -> None:
         """
-        Calculates pattern detection results
+        Performs pattern detection to identify repetitive sequences in user tagging behaviors.
+
+        - **Actions**:
+        - Searches for patterns (e.g., repeating 'YYN') with lengths between `lmin` and `lmax`.
+        - Includes patterns that occur at least `minrep` times.
+
+        - **Output**:
+        Writes pattern results (`Assignment_id`, `User_id`, `Pattern`, `Repetitions`) to a summary file.
 
         Args:
-            tags (list): List of tags
+            tags (list): Tag data to analyze.
+            lmin (int): Minimum pattern length.
+            lmax (int): Maximum pattern length.
+            minrep (int): Minimum repetitions for a valid pattern.
         """
         # Populating the assignment_to_users hashmap
         for tag in tags:
@@ -399,6 +507,26 @@ class Application:
         print("Pattern recognition results written to data/Pattern_recognition.txt")
     
     def calculate_credibility(self, log_time, alpha, total_characters, log_time_max, alpha_max, characters_max):
+            """
+            Calculates a credibility score for a tagger based on three metrics:
+            1. **Tagging Speed**: Normalized log time of tag intervals.
+            2. **Inter-Rater Reliability**: Normalized Krippendorff's alpha.
+            3. **Tag Complexity**: Penalizes overly repetitive or simple patterns.
+
+            - **Credibility Formula**:
+            Credibility = (Norm_Log_Time + Norm_Alpha + Norm_Tag_Complexity) / 3
+
+            Args:
+                log_time (float): Log time of intervals between tags.
+                alpha (float): Krippendorff's alpha for agreement reliability.
+                total_characters (float): Total tag sequence length contributed by this user.
+                log_time_max (float): Maximum observed log time.
+                alpha_max (float): Maximum observed alpha.
+                characters_max (float): Maximum observed tag length.
+
+            Returns:
+                float: Credibility score in the range [0, 1].
+            """
 
         # Check and handle non-numeric or missing values
         log_time = 0 if not isinstance(log_time, (int, float)) or pd.isna(log_time) else log_time
@@ -415,6 +543,19 @@ class Application:
 
 
     def remove_indices_smaller(self, pattern, rep):
+        """
+        Filters out patterns with insufficient diversity (fewer than 2 unique elements).
+
+        - **Purpose**:
+        Ensures only meaningful tag patterns are included in analysis by removing overly simplistic patterns.
+
+        Args:
+            pattern (list): List of patterns detected.
+            rep (list): List of repetition counts for corresponding patterns.
+
+        Returns:
+            list: Filtered list of valid patterns.
+        """
         indices_to_remove = [i for i, p in enumerate(pattern) if len(set(p))<2]
         return [r for i, r in enumerate(rep) if i not in indices_to_remove]
 
@@ -434,6 +575,20 @@ class Application:
         return df
 
     def process_and_save_final_results(self, results_filename, longest_yn_filename, output_filename):
+            """
+            Merges results from multiple tagging analyses into a final summary.
+
+            - **Inputs**:
+            Combines interval logs, Krippendorff alpha, and pattern analysis results.
+
+            - **Output**:
+            Saves a formatted CSV file containing user performance summaries.
+
+            Args:
+                results_filename (str): File with tagging performance results.
+                longest_yn_filename (str): File with longest 'Y'/'N' patterns.
+                output_filename (str): Final output file path.
+            """
             # Read CSV files
             long_y_n = pd.read_csv(longest_yn_filename)
             df = pd.read_csv(results_filename)
@@ -454,6 +609,16 @@ class Application:
 
 
     def combine_csv_results(self, output_file):
+        """
+        Generates a master CSV by merging intermediate analysis outputs like interval logs,
+        agreement scores, and pattern results.
+
+        **Purpose**:
+        Provides a comprehensive summary of tagging quality for all users.
+
+        Args:
+        output_file (str): Path to save the final combined CSV.
+        """
         # Read the CSV files into DataFrames
         interval_logs_df = pd.read_csv("data/Interval_logs.csv")
         krippendorff_df = pd.read_csv("data/krippendorff.csv")
